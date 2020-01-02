@@ -11,9 +11,11 @@
 // Haptic setup
 Adafruit_DRV2605* haptic = NULL;
 
-uint8_t EFFECT_FOOTSTEP = 5;
+uint8_t EFFECT_START = 82;
+uint8_t EFFECT_FOOTSTEP = 8;
 uint8_t EFFECT_BUMP = 12;
 uint8_t EFFECT_CLOCK = 25;
+uint8_t EFFECT_LOCKED_DOOR = 52;
 
 uint8_t newEffect = 0;
 
@@ -22,7 +24,7 @@ const uint8_t TRACKBALL_INT_PIN = 4;
 TrackBall* trackball = NULL;
 
 // Trackball input
-const uint8_t TICKS_PER_STEP = 6;
+const uint8_t TICKS_PER_STEP = 5;
 
 bool switchWasPressed = false;
 bool switchClick = false;
