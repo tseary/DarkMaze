@@ -4,6 +4,8 @@
 	Author:     SCROLLSAW\Thomas
 */
 
+#include <Arduino.h>
+
 #include <Adafruit_DotStar.h>
 #include <Adafruit_DRV2605.h>
 #include <SPI.h>
@@ -50,7 +52,7 @@ bool switchWasPressed = false;
 bool switchClick = false;
 
 // Maze data
-Maze* maze;
+Maze* maze = NULL;
 // Player position in the maze
 uint8_t xPlayer = 0, yPlayer = 0;
 
@@ -71,9 +73,6 @@ void setup() {
 	delay(500);
 
 	// Create a new maze
-	const uint8_t MAZE_WIDTH = 32,
-		MAZE_HEIGHT = 32;
-	maze = new Maze(MAZE_WIDTH, MAZE_HEIGHT);
 	MazeMaker::createMaze(maze, xPlayer, yPlayer);
 }
 

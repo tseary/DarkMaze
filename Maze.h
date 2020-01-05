@@ -11,7 +11,7 @@
 * It does not include items in the maze, e.g.:
 * - player
 * - keys
-* 
+*
 * This class also is not responsible for creating the maze or ensuring that it
 * is solvable. The maze is populated by the MazeMaker class.
 */
@@ -34,11 +34,11 @@ public:
 	}
 
 	inline void setWall(uint8_t x, uint8_t y, bool wall) {
-		maze_t wallMask = (maze_t)1 << x;
+		const maze_t WALL_MASK = (maze_t)1 << x;
 		if (wall) {
-			walls[y] |= wallMask;
+			walls[y] |= WALL_MASK;
 		} else {
-			walls[y] &= ~wallMask;
+			walls[y] &= ~WALL_MASK;
 		}
 	}
 
@@ -49,7 +49,7 @@ public:
 	inline uint8_t getHeight() {
 		return _mazeHeight;
 	}
-	
+
 private:
 	// Maze size
 	uint8_t _mazeWidth, _mazeHeight;

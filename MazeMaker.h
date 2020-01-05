@@ -5,39 +5,35 @@
 
 class MazeMaker {
 public:
-	static void createMaze(Maze* maze, uint8_t& xPlayer, uint8_t& yPlayer) {
-		maze->walls[0]  = 0xFFFFFFFF;
-		maze->walls[1]  = 0xFF9C3FFF;
-		maze->walls[2]  = 0xE79C30C3;
-		maze->walls[3]  = 0xE79C30C3;
-		maze->walls[4]  = 0xE79C30C3;
-		maze->walls[5]  = 0xE79C30C3;
-		maze->walls[6]  = 0xFF9C3FFF;
-		maze->walls[7]  = 0xFFFFE07F;
-		maze->walls[8]  = 0xE7FFE043;
-		maze->walls[9]  = 0xE79C2043;
-		maze->walls[10] = 0xE79C2043;
-		maze->walls[11] = 0xE7FFE043;
-		maze->walls[12] = 0xFFFFE07F;
-		maze->walls[13] = 0xFE043FFF;
-		maze->walls[14] = 0xFE043FFF;
-		maze->walls[15] = 0x80042043;
-		maze->walls[16] = 0x80042043;
-		maze->walls[17] = 0xFE043FFF;
-		maze->walls[18] = 0xFE043FFF;
-		maze->walls[19] = 0x80001FE7;
-		maze->walls[20] = 0x80000067;
-		maze->walls[21] = 0x80000067;
-		maze->walls[22] = 0x80000067;
-		maze->walls[23] = 0x80000067;
-		maze->walls[24] = 0x80001FE7;
-		maze->walls[25] = 0xFFFFFFFF;
-		maze->walls[26] = 0xE7FFFFFF;
-		maze->walls[27] = 0xE79810E7;
-		maze->walls[28] = 0xE79810E7;
-		maze->walls[29] = 0xE7FFFFFF;
-		maze->walls[30] = 0xFFFFFFFF;
-		maze->walls[31] = 0xFFFFFFFF;
+	static void createMaze(Maze* &maze, uint8_t& xPlayer, uint8_t& yPlayer) {
+		if (maze != NULL) {
+			delete maze;
+		}
+
+		maze = new Maze(22, 22);
+
+		maze->walls[21] = 0xFFFFFFFF;
+		maze->walls[20] = 0xFFFF07C1;
+		maze->walls[19] = 0xFFF10001;
+		maze->walls[18] = 0xFFF00001;
+		maze->walls[17] = 0xFFF10001;
+		maze->walls[16] = 0xFFFF06C1;
+		maze->walls[15] = 0xFFFFDEC1;
+		maze->walls[14] = 0xFFE08C41;
+		maze->walls[13] = 0xFFE00001;
+		maze->walls[12] = 0xFFE08C41;
+		maze->walls[11] = 0xFFFFDFC1;
+		maze->walls[10] = 0xFFF18FF7;
+		maze->walls[9] = 0xFFF18C41;
+		maze->walls[8] = 0xFFF00001;
+		maze->walls[7] = 0xFFF18C41;
+		maze->walls[6] = 0xFFF18EFF;
+		maze->walls[5] = 0xFFFF06FF;
+		maze->walls[4] = 0xFFE00023;
+		maze->walls[3] = 0xFFE00023;
+		maze->walls[2] = 0xFFE00023;
+		maze->walls[1] = 0xFFFF07FF;
+		maze->walls[0] = 0xFFFFFFFF;
 
 		/*for (uint8_t y = 0; y < maze->getHeight(); y++) {
 			for (uint8_t x = 0; x < maze->getWidth(); x++) {
