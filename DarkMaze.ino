@@ -32,7 +32,7 @@ const uint8_t TICKS_PER_STEP = 5;
 bool switchWasPressed = false;
 bool switchClick = false;
 
-// Maze size
+// Maze data
 Maze* maze;
 // Player position in the maze
 uint8_t xPlayer = 0, yPlayer = 0;
@@ -163,7 +163,7 @@ void loop() {
 
 void initializeTrackBall() {
 	trackball = new TrackBall(TrackBall::I2C_ADDRESS, TRACKBALL_INT_PIN);
-
+	trackball->setRGBW(0, 0, 0, 32);
 }
 
 void initializeHaptic() {

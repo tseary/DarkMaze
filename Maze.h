@@ -54,6 +54,7 @@ private:
 	// Maze size
 	uint8_t _mazeWidth, _mazeHeight;
 
+public:	// DEBUG
 	// Walls (rendered at the pace level)
 	// Each bit is one tile. The LSB is the easternmost wall,
 	// and walls[0] is the southernmost.
