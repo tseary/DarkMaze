@@ -4,9 +4,11 @@
 	Author:     SCROLLSAW\Thomas
 */
 
-#include <Wire.h>
+#include <Adafruit_DotStar.h>
 #include <Adafruit_DRV2605.h>
+#include <SPI.h>
 #include <TrackBall.h>
+#include <Wire.h>
 
 #include "Maze.h"
 #include "MazeMaker.h"
@@ -14,12 +16,27 @@
 // Haptic setup
 Adafruit_DRV2605* haptic = NULL;
 
-uint8_t EFFECT_START = 82;
-uint8_t EFFECT_FOOTSTEP = 8;
-uint8_t EFFECT_BUMP = 12;
-uint8_t EFFECT_CLOCK = 25;
-uint8_t EFFECT_LOCKED_DOOR = 52;
+// [0] - middle of room
+// [1] - near 1 wall
+// [2] - near 2 walls
+// etc.
+// 23 = "Medium Click 3 - 60%"
+// 33 = "Short Double Click Medium 3 – 60%"
+// 31 = "Short Double Click Medium 3 – 100%"
+//uint8_t EFFECT_FOOTSTEPS[] = {23, 33, 31};	// best yet
+uint8_t EFFECT_FOOTSTEPS[] = {74, 8, 7};
+//uint8_t EFFECT_FOOTSTEPS[] = {72, 74, 33};	// echoey
+const uint8_t NUM_FOOTSTEPS = sizeof(EFFECT_FOOTSTEPS);
 
+uint8_t
+EFFECT_BUMP = 12;	// DEBUG make const
+const uint8_t
+EFFECT_START = 82,
+EFFECT_CLOCK = 25,
+EFFECT_LOCKED_DOOR = 52,
+EFFECT_DOOR_OPEN = 56;
+
+// DEBUG
 uint8_t newEffect = 0;
 
 // Trackball setup
@@ -46,12 +63,11 @@ void setup() {
 	Wire.begin();
 	initializeTrackBall();
 	initializeHaptic();
+	initializeDotstar();
 
 	// Startup effect
-	queueHapticEffect(5, 0);
-	queueHapticEffect(80, 1);
-	queueHapticEffect(25, 2);
-	playHapticEffects(3);
+	queueHapticEffect(EFFECT_START, 0);
+	playHapticEffects(1);
 	delay(500);
 
 	// Create a new maze
@@ -87,7 +103,8 @@ void loop() {
 	//
 
 	bool bump = false;
-	bool footstep = false;
+	const uint8_t NONE = 255;
+	uint8_t footstep = NONE;
 	if (move) {
 		trackball->resetOrigin();
 
@@ -107,7 +124,17 @@ void loop() {
 		if (!maze->isWall(xPlayerDest, yPlayerDest)) {
 			xPlayer = xPlayerDest;
 			yPlayer = yPlayerDest;
-			footstep = true;
+
+			// Count the number of 4-neighbour walls.
+			// This number will be between 0 and 3
+
+			footstep = 0;
+			if (maze->isWall(xPlayer + 1, yPlayer)) footstep++;
+			if (maze->isWall(xPlayer - 1, yPlayer)) footstep++;
+			if (maze->isWall(xPlayer, yPlayer + 1)) footstep++;
+			if (maze->isWall(xPlayer, yPlayer - 1)) footstep++;
+
+			footstep = min(footstep, NUM_FOOTSTEPS - 1);
 		} else {
 			bump = true;
 		}
@@ -120,10 +147,10 @@ void loop() {
 	// Queue haptic effects
 	//
 	uint8_t slot = 0;
-
+	
 	// Footsteps
-	if (footstep) {
-		queueHapticEffect(EFFECT_FOOTSTEP, slot++);
+	if (footstep != NONE) {
+		queueHapticEffect(EFFECT_FOOTSTEPS[footstep], slot++);
 	}
 
 	// Hitting the wall
@@ -139,7 +166,10 @@ void loop() {
 	//
 	// Play haptic effects
 	//
-	playHapticEffects(slot);
+	if (slot) {
+		haptic->stop();	// Stop playback
+		playHapticEffects(slot);
+	}
 
 	//
 	// DEBUG get new effect
@@ -151,10 +181,10 @@ void loop() {
 			newEffect = newEffect * 10 + c - '0';
 		} else if (c == '\n') {
 			// Accept the new effect
-			EFFECT_FOOTSTEP = newEffect;
+			EFFECT_BUMP = newEffect;
 			newEffect = 0;
 			Serial.print("new footstep effect: ");
-			Serial.println(EFFECT_FOOTSTEP);
+			Serial.println(EFFECT_BUMP);
 		}
 	}
 
@@ -179,8 +209,19 @@ void initializeHaptic() {
 	haptic->useLRA();
 }
 
+void initializeDotstar() {
+	const uint8_t DATAPIN = 7, CLOCKPIN = 8;
+	Adafruit_DotStar *dot = new Adafruit_DotStar(1, DATAPIN, CLOCKPIN);
+	dot->begin();
+	dot->show();
+	delete dot;
+	SPI.end();
+}
+
 void queueHapticEffect(uint8_t effect, uint8_t slot) {
 	haptic->setWaveform(slot, effect);
+	Serial.print("queue haptic effect: ");
+	Serial.println(effect);
 }
 
 void playHapticEffects(uint8_t queueLength) {
@@ -193,7 +234,7 @@ void printMaze() {
 		for (int x = maze->getWidth() - 1; x >= 0; x--) {
 			if (maze->isWall(x, y)) {
 				// Wall
-				Serial.print("##");
+				Serial.print("[]");
 			} else if (x == xPlayer && y == yPlayer) {
 				// Player
 				Serial.print("P1");
