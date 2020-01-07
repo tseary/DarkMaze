@@ -20,43 +20,26 @@ typedef uint32_t maze_t;
 
 class Maze {
 public:
-	Maze(uint8_t width, uint8_t height) {
-		// Define the size of the maze
-		_mazeWidth = min(width, 8 * sizeof(maze_t));
-		_mazeHeight = height;
+	Maze() {}
 
-		// Allocate the walls
-		walls = new maze_t[_mazeHeight];
+	~Maze() {
+		delete[] _walls;
 	}
 
-	inline bool isWall(uint8_t x, uint8_t y) {
-		return walls[y] & ((maze_t)1 << x);
-	}
+	bool isWall(uint8_t x, uint8_t y);
+	void setWall(uint8_t x, uint8_t y, bool wall);
 
-	inline void setWall(uint8_t x, uint8_t y, bool wall) {
-		const maze_t WALL_MASK = (maze_t)1 << x;
-		if (wall) {
-			walls[y] |= WALL_MASK;
-		} else {
-			walls[y] &= ~WALL_MASK;
-		}
-	}
+	void setAllWalls(const maze_t *walls, const uint8_t width, const uint8_t height);
 
-	inline uint8_t getWidth() {
-		return _mazeWidth;
-	}
-
-	inline uint8_t getHeight() {
-		return _mazeHeight;
-	}
+	uint8_t getWidth();
+	uint8_t getHeight();
 
 private:
-	// Maze size
-	uint8_t _mazeWidth, _mazeHeight;
-
-public:	// DEBUG
 	// Walls (rendered at the pace level)
 	// Each bit is one tile. The LSB is the easternmost wall,
 	// and walls[0] is the southernmost.
-	maze_t* walls;
+	maze_t* _walls = NULL;
+
+	// Maze size
+	uint8_t _mazeWidth, _mazeHeight;
 };

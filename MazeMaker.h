@@ -5,7 +5,7 @@
 
 class MazeMaker {
 public:
-	static void createMaze(Maze* &maze, uint8_t& xPlayer, uint8_t& yPlayer) {
+	static void createMaze(Maze* &maze, uint8_t width, uint8_t height, uint8_t& xPlayer, uint8_t& yPlayer) {
 		if (maze != NULL) {
 			delete maze;
 		}

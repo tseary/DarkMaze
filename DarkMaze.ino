@@ -22,11 +22,7 @@ Adafruit_DRV2605* haptic = NULL;
 // [1] - near 1 wall
 // [2] - near 2 walls
 // etc.
-// 23 = "Medium Click 3 - 60%"
-// 33 = "Short Double Click Medium 3 – 60%"
-// 31 = "Short Double Click Medium 3 – 100%"
-//uint8_t EFFECT_FOOTSTEPS[] = {23, 33, 31};	// best yet
-uint8_t EFFECT_FOOTSTEPS[] = {74, 8, 7};
+uint8_t EFFECT_FOOTSTEPS[] = {74, 8, 7};		// best yet
 //uint8_t EFFECT_FOOTSTEPS[] = {72, 74, 33};	// echoey
 const uint8_t NUM_FOOTSTEPS = sizeof(EFFECT_FOOTSTEPS);
 
@@ -230,6 +226,11 @@ void playHapticEffects(uint8_t queueLength) {
 
 void printMaze() {
 	for (int y = maze->getHeight() - 1; y >= 0; y--) {
+
+		Serial.print("y=\t");
+		Serial.print(y);
+		Serial.print("\t");
+
 		for (int x = maze->getWidth() - 1; x >= 0; x--) {
 			if (maze->isWall(x, y)) {
 				// Wall
@@ -243,8 +244,7 @@ void printMaze() {
 			}
 		}
 
-		Serial.print(" ");
-		Serial.println(y);
+		Serial.println();
 	}
 	Serial.println();
 }
