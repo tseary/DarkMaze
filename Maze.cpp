@@ -1,8 +1,8 @@
 
 #include "Maze.h"
 
-bool Maze::isWall(uint8_t x, uint8_t y) {
-	return walls[y] & ((maze_t)1 << x);
+bool Maze::isWall(uint8_t x, uint8_t y) const {
+	return _walls[y] & ((maze_t)1 << x);
 }
 
 void Maze::setWall(uint8_t x, uint8_t y, bool wall) {
@@ -14,10 +14,12 @@ void Maze::setWall(uint8_t x, uint8_t y, bool wall) {
 	}
 }
 
-void Maze::setAllWalls(const maze_t *walls, const uint8_t width, const uint8_t height) {
+void Maze::setAllWalls(const maze_t* walls, const uint8_t width, const uint8_t height) {
 	// Define the size of the maze
 	_mazeWidth = width;
 	_mazeHeight = height;
+
+	if (_walls != NULL) 		delete[] _walls;
 
 	// Deep copy the walls array
 	_walls = new maze_t[_mazeHeight];
@@ -26,10 +28,10 @@ void Maze::setAllWalls(const maze_t *walls, const uint8_t width, const uint8_t h
 	}
 }
 
-uint8_t Maze::getWidth() {
+uint8_t Maze::getWidth() const {
 	return _mazeWidth;
 }
 
-uint8_t Maze::getHeight() {
+uint8_t Maze::getHeight() const {
 	return _mazeHeight;
 }

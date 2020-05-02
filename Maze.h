@@ -1,6 +1,6 @@
-
 #pragma once
 
+#include "Items.h"
 #include <Arduino.h>
 //#include <stdint.h>
 
@@ -12,7 +12,7 @@
 * - player
 * - keys
 *
-* This class also is not responsible for creating the maze or ensuring that it
+* This class is not responsible for creating the maze or ensuring that it
 * is solvable. The maze is populated by the MazeMaker class.
 */
 
@@ -20,19 +20,32 @@ typedef uint32_t maze_t;
 
 class Maze {
 public:
-	Maze() {}
+	Maze(uint8_t width, uint8_t height) {
+		_mazeWidth = width;
+		_mazeHeight = height;
+		_walls = new maze_t[height];
+
+		items = new Items();
+	}
 
 	~Maze() {
 		delete[] _walls;
 	}
 
-	bool isWall(uint8_t x, uint8_t y);
+	bool isWall(uint8_t x, uint8_t y) const;
 	void setWall(uint8_t x, uint8_t y, bool wall);
+
+	// DEBUG
+	maze_t getRow(uint8_t y) const {
+		return _walls[y];
+	}
 
 	void setAllWalls(const maze_t *walls, const uint8_t width, const uint8_t height);
 
-	uint8_t getWidth();
-	uint8_t getHeight();
+	uint8_t getWidth() const;
+	uint8_t getHeight() const;
+
+	Items* items;
 
 private:
 	// Walls (rendered at the pace level)

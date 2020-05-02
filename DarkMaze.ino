@@ -49,8 +49,6 @@ bool switchClick = false;
 
 // Maze data
 Maze* maze = NULL;
-// Player position in the maze
-uint8_t xPlayer = 0, yPlayer = 0;
 
 const uint8_t N = 1, S = 2, E = 3, W = 4;
 
@@ -69,7 +67,8 @@ void setup() {
 	delay(500);
 
 	// Create a new maze
-	MazeMaker::createMaze(maze, xPlayer, yPlayer);
+	MazeMaker* maker = MazeMaker::getInstance();
+	maker->createMaze(maze);
 }
 
 void loop() {
@@ -103,8 +102,8 @@ void loop() {
 	if (move) {
 		trackball->resetOrigin();
 
-		uint8_t xPlayerDest = xPlayer;
-		uint8_t yPlayerDest = yPlayer;
+		uint8_t xPlayerDest, yPlayerDest;
+		maze->items->getPlayer(xPlayerDest, yPlayerDest);
 
 		if (move == N) {
 			yPlayerDest++;
@@ -117,17 +116,15 @@ void loop() {
 		}
 
 		if (!maze->isWall(xPlayerDest, yPlayerDest)) {
-			xPlayer = xPlayerDest;
-			yPlayer = yPlayerDest;
+			maze->items->setPlayer(xPlayerDest, yPlayerDest);
 
 			// Count the number of 4-neighbour walls.
 			// This number will be between 0 and 3
-
 			footstep = 0;
-			if (maze->isWall(xPlayer + 1, yPlayer)) footstep++;
-			if (maze->isWall(xPlayer - 1, yPlayer)) footstep++;
-			if (maze->isWall(xPlayer, yPlayer + 1)) footstep++;
-			if (maze->isWall(xPlayer, yPlayer - 1)) footstep++;
+			if (maze->isWall(xPlayerDest + 1, yPlayerDest)) footstep++;
+			if (maze->isWall(xPlayerDest - 1, yPlayerDest)) footstep++;
+			if (maze->isWall(xPlayerDest, yPlayerDest + 1)) footstep++;
+			if (maze->isWall(xPlayerDest, yPlayerDest - 1)) footstep++;
 
 			footstep = min(footstep, NUM_FOOTSTEPS - 1);
 		} else {
@@ -142,7 +139,7 @@ void loop() {
 	// Queue haptic effects
 	//
 	uint8_t slot = 0;
-	
+
 	// Footsteps
 	if (footstep != NONE) {
 		queueHapticEffect(EFFECT_FOOTSTEPS[footstep], slot++);
@@ -206,7 +203,7 @@ void initializeHaptic() {
 
 void initializeDotstar() {
 	const uint8_t DATAPIN = 7, CLOCKPIN = 8;
-	Adafruit_DotStar *dot = new Adafruit_DotStar(1, DATAPIN, CLOCKPIN);
+	Adafruit_DotStar* dot = new Adafruit_DotStar(1, DATAPIN, CLOCKPIN);
 	dot->begin();
 	dot->show();
 	delete dot;
@@ -235,7 +232,7 @@ void printMaze() {
 			if (maze->isWall(x, y)) {
 				// Wall
 				Serial.print("[]");
-			} else if (x == xPlayer && y == yPlayer) {
+			} else if (maze->items->isPlayer(x, y)) {
 				// Player
 				Serial.print("P1");
 			} else {
