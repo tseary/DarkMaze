@@ -5,6 +5,7 @@
 */
 
 #include <Arduino.h>
+#include <stdint.h>
 
 #include <Adafruit_DotStar.h>
 #include <Adafruit_DRV2605.h>
@@ -12,6 +13,7 @@
 #include <TrackBall.h>
 #include <Wire.h>
 
+#include "Items.h"
 #include "Maze.h"
 #include "MazeMaker.h"
 
@@ -66,8 +68,28 @@ void setup() {
 	playHapticEffects(1);
 	delay(500);
 
+	// Initialize the RNG by clicking the trackball
+	do {
+		trackball->read();
+		if (trackball->getSwitchState()) break;
+	} while (true);
+	uint32_t seed = micros() << 8;
+	do {
+		trackball->read();
+		if (!trackball->getSwitchState()) break;
+	} while (true);
+	seed ^= micros();
+	randomSeed(seed);
+	Serial.print("Random seed: ");
+	Serial.println(seed);
+
 	// Create a new maze
 	MazeMaker* maker = MazeMaker::getInstance();
+	uint8_t roomsX = random(3) + 3,	// 3-5
+		roomsY = random(2) + 3,		// 3-4
+		roomW = random(4) + 3,		// 3-6
+		roomH = random(5) + 3;		// 3-7
+	maker->setMazeDimensions(roomsX, roomsY, roomW, roomH);
 	maker->createMaze(maze);
 }
 
@@ -185,7 +207,8 @@ void loop() {
 
 void initializeTrackBall() {
 	trackball = new TrackBall(TrackBall::I2C_ADDRESS, TRACKBALL_INT_PIN);
-	trackball->setRGBW(0, 0, 0, 32);
+	//trackball->setRGBW(0, 0, 0, 32);
+	trackball->setRGBW(8, 8, 8, 8);
 }
 
 void initializeHaptic() {

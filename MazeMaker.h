@@ -1,8 +1,10 @@
 #pragma once
 
+#include <Arduino.h>
+#include <stdint.h>
+
 #include "Items.h"
 #include "Maze.h"
-#include <Arduino.h>
 
 class MazeMaker {
 public:

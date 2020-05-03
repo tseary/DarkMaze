@@ -30,8 +30,14 @@ void MazeMaker::createMaze(Maze*& maze) {
 	*/
 
 	// Define maze at the room level
+
+	// mazeRooms contains the wall thickness and connectivity information for each room. It is indexed by [x][y].
 	uint8_t** mazeRooms = new uint8_t * [ROOMS_X];
+
+	// mazeRegions contains the region to which each room belongs. It is indexed by [x][y].
 	uint8_t** mazeRegions = new uint8_t * [ROOMS_X];
+
+	// mazeRegionSizes contains the number of rooms in each region. It is indexed by [region number].
 	uint8_t* mazeRegionSizes = new uint8_t[ROOMS];
 
 	Serial.println("Creating room-level model.");
@@ -69,7 +75,7 @@ void MazeMaker::createMaze(Maze*& maze) {
 
 	Serial.println("Combining regions by wall thickness...");
 
-	// Combine regions that are connected by wall thickness
+	// Combine regions that are connected by zero-thickness walls
 	bool progress;
 	do {
 		progress = false;
@@ -126,6 +132,10 @@ void MazeMaker::createMaze(Maze*& maze) {
 	uint8_t regionIndex1 = random(regionCount),
 		regionIndex2 = random(regionCount - 1);
 	if (regionIndex2 >= regionIndex1) regionIndex2++;
+
+	// Suppose there are N rooms and K regions of non-zero size.
+	// The region indexes are numbers in [0,K).
+	// This converts those to actual region numbers in [0,N).
 	uint8_t startRegion1, startRegion2;
 	for (uint8_t region = 0, regionIndex = 0; region < ROOMS; region++) {
 		// If the size of the region is zero, skip it
@@ -159,6 +169,7 @@ void MazeMaker::createMaze(Maze*& maze) {
 	uint8_t debugNoChangeCounter = 0;
 	while (regionCount > FINAL_REGION_COUNT && debugNoChangeCounter < 30) {
 		// Choose random door location
+		// DOORS is the number of possible locations for doors, i.e. the number of walls between two rooms.
 		const uint16_t DOORS = ROOMS_X * (ROOMS_Y - 1) + (ROOMS_X - 1) * ROOMS_Y;
 		uint16_t doorIndex = random(DOORS);
 		bool south;	// true = door to south, false = door to east
@@ -184,7 +195,7 @@ void MazeMaker::createMaze(Maze*& maze) {
 
 			// Get the regions on either side of the door
 			region1 = mazeRegions[xDoor][yDoor];
-			region2 = mazeRegions[xDoor - (south ? 0 : 1)][yDoor - (south ? 1 : 0)];
+			region2 = south ? mazeRegions[xDoor][yDoor - 1] : mazeRegions[xDoor - 1][yDoor];
 
 			// The door location is good if it connects to exactly one of the starting regions
 			bool good = ((region1 == startRegion1) ^ (region2 == startRegion2)) ||
@@ -280,33 +291,135 @@ void MazeMaker::createMaze(Maze*& maze) {
 	*/
 
 	/*
-	* MAZE TOPOLOGIES:
+	* MAZE TOPOLOGY / SEQUENCE:
+	*	P = player starting point
+	*	k = middle door key
+	*	M = middle door
+	*	X = exit door key
+	*	E = exit door
+	*	1, 2 = regions
 	*
-	*	Linear:			Parallel:		Closet (suitable when one region is very small):
-	*	 _ _ _ _ _		 _ _ _ _ _		 _ _ _ _ _
-	*	|     |   |		|     |   |		|   |     |
-	*	|P    |   |		|P    |   |		|   |  P  |
-	*	|     M   E		|     M   E		|   M     E
-	*	|  k  |K  |		|k K  |   |		|  K|  k  |
-	*	|_ _ _|_ _|		|_ _ _|_ _|		|_ _|_ _ _|
+	*			Linear			Parallel		Diversion		Closet (suitable when one region is very small):
+	*			 _ _ _ _ _						 _ _ _ _ _
+	*	Single	|1=2      |						|1=2  |   |
+	*			|         |						|     M   |
+	*			|  P      E						|  P  |   E
+	*			|      X  |						|    k X  |
+	*			|_ _ _ _ _|						|_ _ _ _ _|
 	*
-	*	Lin./enclosed:	Par./enclosed:	Closet/enclosed:
-	*	 _ _ _ _ _		 _ _ _ _ _		 _ _ _ _ _
-	*	|  _ _ _ K|		|  _ _ _  |		|P _ _ _ k|
-	*	| |     | |		| |    K| |		| |    K| |
-	*	| |P k  M E		| |P k  M E		| |     M E
-	*	| |_ _ _| |		| |_ _ _| |		| |_ _ _| |
-	*	|_ _ _ _ _|		|_ _ _ _ _|		|_ _ _ _ _|
+	*			 _ _ _ _ _		 _ _ _ _ _		 _ _ _ _ _		 _ _ _ _ _
+	*	Double	|1    |2  |		|1    |2  |		|1  |2    |		|1  |2    |
+	*			|  P  |   |		|  P  |   |		|   |  P  |		|   |  P  |
+	*			|     M   E		|     M   E		|   M     E		|   M     E
+	*			|  k  |X  |		| k X |   |		|   | k X |		|  X|  k  |
+	*			|_ _ _|_ _|		|_ _ _|_ _|		|_ _|_ _ _|		|_ _|_ _ _|
 	*
-	*	One region:
-	*	 _ _ _ _ _
-	*	|         |
-	*	|         |
-	*	|  P      E
-	*	|     K   |
-	*	|_ _ _ _ _|
+	*			 _ _ _ _ _		 _ _ _ _ _		 _ _ _ _ _		 _ _ _ _ _
+	*	Nested	|2 _ _ _ X|		|2 _ _ _  |		|2 _ _ _ k|		|2 _ _ _ k|
+	*			| |1    | |		| |1   X| |		| |1    | |		| |1   X| |
+	*			| |P k  M E		| |P k  M E		|P|     M E		|P|     M E
+	*			| |_ _ _| |		| |_ _ _| |		| |_ _ _|X|		| |_ _ _| |
+	*			|_ _ _ _ _|		|_ _ _ _ _|		|_ _ _ _ _|		|_ _ _ _ _|
 	*
+	*	Item regions by sequence:
+	*				Player	Mid key	Ex.key	Ex.door
+	*	Linear		1		1		2		2
+	*	Parallel	1		1		1		2
+	*	Diversion	2		2		2		2
+	*	Closet		2		2		1		2
+	*
+	*	The middle door is always between regions 1 and 2.
+	*	The exit door is always in region 2.
+	*
+	* Sequence descriptions:
+	* Linear: The player must escape from region 1 by finding the middle key.
+	*		Then they must escape the maze by finding the exit key and exit door.
+	* Parallel: The player must find both keys in region 1, then escape through
+	*		the middle door and exit door.
+	* Diversion: The player must only escape region 2 by finding the exit key
+	*		and exit door. The middle key unlocks region 1, which is empty.
+	* Closet: The player must find the middle key to unlock region 1, which
+	*		contains the exit key. They must then escape through the exit door.
 	*/
+
+	/*
+	* Here we identify the topology of the maze regions.
+	* This depends only upon the number of regions and their connection to the outside wall.
+	* We also select a sequence, which determines which regions the items go in.
+	*/
+
+	const uint8_t TOPO_SINGLE = 1,
+		TOPO_DOUBLE = 2,
+		TOPO_NESTED = 3;
+	const uint8_t SEQ_LINEAR = 1,
+		SEQ_DIVERSION = 2,
+		SEQ_PARALLEL = 3,
+		SEQ_CLOSET = 4;
+
+	uint8_t topology;
+
+	if (regionCount == 1) {
+		// Make the start regions equal and correct
+		startRegion1 = mazeRegions[0][0];
+		startRegion2 = mazeRegions[0][0];
+
+		topology = TOPO_SINGLE;
+	} else {
+		// Is any region not touching the outside wall?
+		// The two regions are startRegion1 and startRegion2.
+		bool touchingOutside1 = false,
+			touchingOutside2 = false;
+		// Check the vertical outside walls
+		// This loop breaks if both regions are found to be touching the outside wall.
+		for (uint8_t y = 0; y < ROOMS_Y && !(touchingOutside1 && touchingOutside2); y++) {
+			// East wall
+			uint8_t region = mazeRegions[0][y];
+			touchingOutside1 |= region == startRegion1;
+			touchingOutside2 |= region == startRegion2;
+
+			// West wall
+			region = mazeRegions[ROOMS_X - 1][y];
+			touchingOutside1 |= region == startRegion1;
+			touchingOutside2 |= region == startRegion2;
+		}
+		// Check the horizontal outside walls
+		// This loop breaks if both regions are found to be touching the outside wall.
+		for (uint8_t x = 1; x < (ROOMS_X - 1) && !(touchingOutside1 && touchingOutside2); x++) {
+			// South wall
+			uint8_t region = mazeRegions[x][0];
+			touchingOutside1 |= region == startRegion1;
+			touchingOutside2 |= region == startRegion2;
+
+			// North wall
+			region = region = mazeRegions[x][ROOMS_Y - 1];
+			touchingOutside1 |= region == startRegion1;
+			touchingOutside2 |= region == startRegion2;
+		}
+
+		// If startRegion2 is not touching the outside wall, swap with startRegion1
+		if (!touchingOutside2) {
+			uint8_t swapRegion = startRegion1;
+			startRegion1 = startRegion2;
+			startRegion2 = swapRegion;
+
+			bool swapTouching = touchingOutside1;
+			touchingOutside1 = touchingOutside2;
+			touchingOutside2 = swapTouching;
+		}
+		// Now startRegion2 is definitely touching the outside wall
+
+		// Determine if it is TOPO_LINEAR or TOPO_ENCLOSED
+		topology = touchingOutside1 ? TOPO_DOUBLE : TOPO_NESTED;
+	}
+
+	Serial.print("Region topology: ");
+	Serial.println(topology);
+
+	/*
+	* Now the region topology has been determined, so we choose a sequence.
+	*/
+
+	// TODO Place items
 
 	uint8_t xPlayer, yPlayer;
 	uint8_t xMidKey, yMidKey;
@@ -396,7 +509,7 @@ void MazeMaker::createMaze(Maze*& maze) {
 		}
 	}
 
-	// TODO Render doorways
+	// Render doorways
 	for (uint8_t xRoom = 0; xRoom < ROOMS_X; xRoom++) {
 		const uint32_t EAST_DOOR_MASK = ~(~(0xffffffff << ROOM_W) <<
 			(xRoom * ROOM_W + MAZE_BORDER - ROOM_W / 2));
@@ -429,6 +542,9 @@ void MazeMaker::createMaze(Maze*& maze) {
 	}
 	maze = new Maze(MAZE_W, MAZE_H);
 	maze->setAllWalls(myWalls, MAZE_W, MAZE_H);
+
+	// DEBUG Place Player
+	maze->items->setPlayer(20, 15);
 
 	// Clean up
 	delete[] myWalls;

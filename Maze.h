@@ -2,7 +2,7 @@
 
 #include "Items.h"
 #include <Arduino.h>
-//#include <stdint.h>
+#include <stdint.h>
 
 /*
 * This class holds the data that defines a maze:
