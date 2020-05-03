@@ -30,6 +30,7 @@ public:
 
 	~Maze() {
 		delete[] _walls;
+		delete items;
 	}
 
 	bool isWall(uint8_t x, uint8_t y) const;

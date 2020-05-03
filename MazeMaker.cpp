@@ -253,71 +253,37 @@ void MazeMaker::createMaze(Maze*& maze) {
 	// and it is possible that one region may not touch the outer wall.
 
 	/*
-	* To finish building the maze at the room level, we must place some objects:
-	* - Player
-	* - Middle door
-	* - Middle door key
-	* - Exit door
-	* - Exit door key
+	* To finish building the maze at the room level, we must place some items.
+	* The sequence determines which region each item is in.
 	*
-	* FIRST APPROACH:
-	* We will assume that there are two regions, although there may be only one.
-	* Suppose that these are region 1, where the player starts; and region 2
-	* where the exit door is.
+	* Items:
+	* P - Player
+	* k - Middle door key
+	* M - Middle door
+	* X - Exit door key
+	* E - Exit door
 	*
-	* The player starts in the middle of a room in region 1.
-	*
-	* The middle door is placed on the wall of a room in region 1, which connects
-	* to a room in region 2.
-	*
-	* The middle door key is placed in a room in region 1.
-	*
-	* The exit door is placed on the outer maze wall, in the middle of the wall
-	* of a room in region 2. The exit door is two paces wide.
-	*
-	* The exit door key may be placed anywhere in the maze.
-	* (Not in the same room as the player or the middle door key.)
-	*
-	* SECOND APPROACH:
-	* (based on a single-room region)
-	* The player and middle door key must be in region 1.
-	*
-	* At least one of the exit door or exit door key must be in region 2,
-	* to necessitate opening the middle door.
-	*
-	* The middle door is placed on the wall of a room in region 1, which connects
-	* to a room in region 2.
-	*
-	*/
-
-	/*
 	* MAZE TOPOLOGY / SEQUENCE:
-	*	P = player starting point
-	*	k = middle door key
-	*	M = middle door
-	*	X = exit door key
-	*	E = exit door
-	*	1, 2 = regions
 	*
 	*			Linear			Parallel		Diversion		Closet (suitable when one region is very small):
 	*			 _ _ _ _ _						 _ _ _ _ _
-	*	Single	|1=2      |						|1=2  |   |
+	*			|1=2      |						|1=2  |   |
 	*			|         |						|     M   |
-	*			|  P      E						|  P  |   E
+	*	Single	|  P      E						|  P  |   E
 	*			|      X  |						|    k X  |
 	*			|_ _ _ _ _|						|_ _ _ _ _|
 	*
 	*			 _ _ _ _ _		 _ _ _ _ _		 _ _ _ _ _		 _ _ _ _ _
-	*	Double	|1    |2  |		|1    |2  |		|1  |2    |		|1  |2    |
+	*			|1    |2  |		|1    |2  |		|1  |2    |		|1  |2    |
 	*			|  P  |   |		|  P  |   |		|   |  P  |		|   |  P  |
-	*			|     M   E		|     M   E		|   M     E		|   M     E
+	*	Double	|     M   E		|     M   E		|   M     E		|   M     E
 	*			|  k  |X  |		| k X |   |		|   | k X |		|  X|  k  |
 	*			|_ _ _|_ _|		|_ _ _|_ _|		|_ _|_ _ _|		|_ _|_ _ _|
 	*
 	*			 _ _ _ _ _		 _ _ _ _ _		 _ _ _ _ _		 _ _ _ _ _
-	*	Nested	|2 _ _ _ X|		|2 _ _ _  |		|2 _ _ _ k|		|2 _ _ _ k|
+	*			|2 _ _ _ X|		|2 _ _ _  |		|2 _ _ _ k|		|2 _ _ _ k|
 	*			| |1    | |		| |1   X| |		| |1    | |		| |1   X| |
-	*			| |P k  M E		| |P k  M E		|P|     M E		|P|     M E
+	*	Nested	| |P k  M E		| |P k  M E		|P|     M E		|P|     M E
 	*			| |_ _ _| |		| |_ _ _| |		| |_ _ _|X|		| |_ _ _| |
 	*			|_ _ _ _ _|		|_ _ _ _ _|		|_ _ _ _ _|		|_ _ _ _ _|
 	*
@@ -432,8 +398,6 @@ void MazeMaker::createMaze(Maze*& maze) {
 
 	// Choose the player starting room
 	randomRoom(xPlayer, yPlayer);
-	uint8_t startRegion = mazeRegions[xPlayer][yPlayer];
-
 
 	randomRoom(xMidKey, yMidKey);
 	randomRoom(xExitKey, yExitKey);
@@ -537,14 +501,17 @@ void MazeMaker::createMaze(Maze*& maze) {
 	}
 
 	// Re-create maze object and load in myWalls
+	// TODO Allow writing an entire row to maze->_walls
 	if (maze != NULL) {
 		delete maze;
 	}
 	maze = new Maze(MAZE_W, MAZE_H);
 	maze->setAllWalls(myWalls, MAZE_W, MAZE_H);
 
-	// DEBUG Place Player
-	maze->items->setPlayer(20, 15);
+	// DEBUG Place Player (convert room to paces)
+	xPlayer = xPlayer * ROOM_W + ROOM_W / 2 + MAZE_BORDER;
+	yPlayer = yPlayer * ROOM_H + ROOM_H / 2 + MAZE_BORDER;
+	maze->items->setPlayer(xPlayer, yPlayer);
 
 	// Clean up
 	delete[] myWalls;

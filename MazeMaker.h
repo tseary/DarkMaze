@@ -18,56 +18,8 @@ public:
 
 	void setMazeDimensions(uint8_t roomsX = 4, uint8_t roomsY = 4, uint8_t roomWidth = 5, uint8_t roomHeight = 5);
 
+	// Pass in a NULL pointer for maze. It will be instantiated and populated with a valid maze.
 	void createMaze(Maze*& maze);
-
-	/**
-	Pass in a NULL pointer for maze. It will be instantiated and populated with a valid maze.
-	*/
-	/*static void createMaze(Maze*& maze, uint8_t width, uint8_t height) {
-		if (maze != NULL) {
-			delete maze;
-		}
-
-		// DEBUG static maze
-		maze_t *myWalls = new maze_t[22];
-
-		myWalls[21] = 0xFFFFFFFF;
-		myWalls[20] = 0xFFFF07C1;
-		myWalls[19] = 0xFFF10001;
-		myWalls[18] = 0xFFF00001;
-		myWalls[17] = 0xFFF10001;
-		myWalls[16] = 0xFFFF06C1;
-		myWalls[15] = 0xFFFFDEC1;
-		myWalls[14] = 0xFFE08C41;
-		myWalls[13] = 0xFFE00001;
-		myWalls[12] = 0xFFE08C41;
-		myWalls[11] = 0xFFFFDFC1;
-		myWalls[10] = 0xFFF18FF7;
-		myWalls[9] = 0xFFF18C41;
-		myWalls[8] = 0xFFF00001;
-		myWalls[7] = 0xFFF18C41;
-		myWalls[6] = 0xFFF18EFF;
-		myWalls[5] = 0xFFFF06FF;
-		myWalls[4] = 0xFFE00023;
-		myWalls[3] = 0xFFE00023;
-		myWalls[2] = 0xFFE00023;
-		myWalls[1] = 0xFFFF07FF;
-		myWalls[0] = 0xFFFFFFFF;
-
-		maze = new Maze(22, 22);
-		maze->setAllWalls(myWalls, 22, 22);
-
-		delete[] myWalls;
-
-		//for (uint8_t y = 0; y < maze->getHeight(); y++) {
-		//	for (uint8_t x = 0; x < maze->getWidth(); x++) {
-		//		maze->setWall(x, y, x == 0 || x == (maze->getWidth() - 1) ||
-		//			y == 0 || y == (maze->getHeight() - 1));
-		//	}
-		//}
-
-		maze->items->setPlayer(20, 15);
-	}*/
 
 private:
 	// Singleton
