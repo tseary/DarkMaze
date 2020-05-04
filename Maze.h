@@ -1,8 +1,9 @@
 #pragma once
 
-#include "Items.h"
 #include <Arduino.h>
 #include <stdint.h>
+
+#include "Items.h"
 
 /*
 * This class holds the data that defines a maze:
@@ -33,6 +34,9 @@ public:
 		delete items;
 	}
 
+	// The positions of items in the maze
+	Items* items;
+
 	bool isWall(uint8_t x, uint8_t y) const;
 	void setWall(uint8_t x, uint8_t y, bool wall);
 
@@ -46,7 +50,7 @@ public:
 	uint8_t getWidth() const;
 	uint8_t getHeight() const;
 
-	Items* items;
+	void printMaze();
 
 private:
 	// Walls (rendered at the pace level)

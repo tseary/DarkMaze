@@ -266,12 +266,12 @@ void MazeMaker::createMaze(Maze*& maze) {
 	* MAZE TOPOLOGY / SEQUENCE:
 	*
 	*			Linear			Parallel		Diversion		Closet (suitable when one region is very small):
-	*			 _ _ _ _ _						 _ _ _ _ _
-	*			|1=2      |						|1=2  |   |
-	*			|         |						|     M   |
-	*	Single	|  P      E						|  P  |   E
-	*			|      X  |						|    k X  |
-	*			|_ _ _ _ _|						|_ _ _ _ _|
+	*			 _ _ _ _ _
+	*			|1=2      |
+	*			|         |
+	*	Single	|  P      E			N/A				N/A				N/A
+	*			|      X  |
+	*			|_ _ _ _ _|
 	*
 	*			 _ _ _ _ _		 _ _ _ _ _		 _ _ _ _ _		 _ _ _ _ _
 	*			|1    |2  |		|1    |2  |		|1  |2    |		|1  |2    |
@@ -288,11 +288,11 @@ void MazeMaker::createMaze(Maze*& maze) {
 	*			|_ _ _ _ _|		|_ _ _ _ _|		|_ _ _ _ _|		|_ _ _ _ _|
 	*
 	*	Item regions by sequence:
-	*				Player	Mid key	Ex.key	Ex.door
-	*	Linear		1		1		2		2
-	*	Parallel	1		1		1		2
-	*	Diversion	2		2		2		2
-	*	Closet		2		2		1		2
+	*				Player	Mid.key	Ex.key
+	*	Linear		1		1		2
+	*	Parallel	1		1		1
+	*	Diversion	2		2		2
+	*	Closet		2		2		1
 	*
 	*	The middle door is always between regions 1 and 2.
 	*	The exit door is always in region 2.
@@ -300,6 +300,7 @@ void MazeMaker::createMaze(Maze*& maze) {
 	* Sequence descriptions:
 	* Linear: The player must escape from region 1 by finding the middle key.
 	*		Then they must escape the maze by finding the exit key and exit door.
+	*		In the single topology, the middle key and door are omitted.
 	* Parallel: The player must find both keys in region 1, then escape through
 	*		the middle door and exit door.
 	* Diversion: The player must only escape region 2 by finding the exit key
@@ -322,7 +323,8 @@ void MazeMaker::createMaze(Maze*& maze) {
 		SEQ_PARALLEL = 3,
 		SEQ_CLOSET = 4;
 
-	uint8_t topology;
+	uint8_t topology,
+		sequence;
 
 	if (regionCount == 1) {
 		// Make the start regions equal and correct
@@ -330,6 +332,7 @@ void MazeMaker::createMaze(Maze*& maze) {
 		startRegion2 = mazeRegions[0][0];
 
 		topology = TOPO_SINGLE;
+		sequence = SEQ_LINEAR;
 	} else {
 		// Is any region not touching the outside wall?
 		// The two regions are startRegion1 and startRegion2.
@@ -372,39 +375,76 @@ void MazeMaker::createMaze(Maze*& maze) {
 			touchingOutside1 = touchingOutside2;
 			touchingOutside2 = swapTouching;
 		}
-		// Now startRegion2 is definitely touching the outside wall
 
 		// Determine if it is TOPO_LINEAR or TOPO_ENCLOSED
 		topology = touchingOutside1 ? TOPO_DOUBLE : TOPO_NESTED;
+
+		// Select a sequence randomly
+		sequence = random(4) + 1;
 	}
 
-	Serial.print("Region topology: ");
+	// Now startRegion2 is definitely touching the outside wall.
+	// In TOPO_SINGLE, startRegion1 == startRegion2.
+	// In TOPO_NESTED, startRegion1 is not touching the outside wall.
+
+	Serial.print("Topology: ");
 	Serial.println(topology);
 
-	/*
-	* Now the region topology has been determined, so we choose a sequence.
-	*/
+	// Choose the regions for each item depending on the sequence
+	uint8_t itemRegionPlayer,
+		itemRegionMidKey,
+		itemRegionExitKey;
 
-	// TODO Place items
+	Serial.print("Sequence: ");
+	switch (sequence) {
+	case SEQ_LINEAR:
+		itemRegionPlayer = startRegion1;
+		itemRegionExitKey = startRegion2;
+		Serial.println("LINEAR");
+		break;
 
+	case SEQ_PARALLEL:
+		itemRegionPlayer = startRegion1;
+		itemRegionExitKey = startRegion1;
+		Serial.println("PARALLEL");
+		break;
+
+	case SEQ_DIVERSION:
+		itemRegionPlayer = startRegion2;
+		itemRegionExitKey = startRegion2;
+		Serial.println("DIVERSION");
+		break;
+
+	case SEQ_CLOSET:
+		itemRegionPlayer = startRegion2;
+		itemRegionExitKey = startRegion1;
+		Serial.println("CLOSET");
+		break;
+	}
+
+	itemRegionMidKey = itemRegionPlayer;
+
+	// For TOPO_DOUBLE, if one region has only one room, swap appropriately
+	// so that the player does not start in the one-room region.
+	if (topology == TOPO_DOUBLE && mazeRegionSizes[itemRegionPlayer] == 1) {
+		uint8_t swapRegion = startRegion1;
+		startRegion1 = startRegion2;
+		startRegion2 = swapRegion;
+	}
+
+	// Choose rooms to put things in, in the appropriate regions
 	uint8_t xPlayer, yPlayer;
 	uint8_t xMidKey, yMidKey;
 	uint8_t xExitKey, yExitKey;
+	randomRoomInRegion(xPlayer, yPlayer, mazeRegions, itemRegionPlayer);
+	randomRoomInRegion(xMidKey, yMidKey, mazeRegions, itemRegionMidKey);
+	randomRoomInRegion(xExitKey, yExitKey, mazeRegions, itemRegionExitKey);
 
 	const uint8_t DIR_N = 0, DIR_E = 1, DIR_S = 2, DIR_W = 3;
 
+	// TODO Choose door locations
 	uint8_t xMidDoor, yMidDoor, dirMidDoor;
 	uint8_t xExitDoor, yExitDoor, dirExitDoor;
-
-	// Choose the player starting room
-	randomRoom(xPlayer, yPlayer);
-
-	randomRoom(xMidKey, yMidKey);
-	randomRoom(xExitKey, yExitKey);
-
-	randomRoom(xExitKey, yExitKey);
-	randomRoom(xExitKey, yExitKey);
-
 
 
 	//
@@ -509,9 +549,12 @@ void MazeMaker::createMaze(Maze*& maze) {
 	maze->setAllWalls(myWalls, MAZE_W, MAZE_H);
 
 	// DEBUG Place Player (convert room to paces)
-	xPlayer = xPlayer * ROOM_W + ROOM_W / 2 + MAZE_BORDER;
-	yPlayer = yPlayer * ROOM_H + ROOM_H / 2 + MAZE_BORDER;
+	roomToPaces(xPlayer, yPlayer);
 	maze->items->setPlayer(xPlayer, yPlayer);
+	roomToPaces(xMidKey, yMidKey);
+	maze->items->setMidKey(xMidKey, yMidKey);
+	roomToPaces(xExitKey, yExitKey);
+	maze->items->setExitKey(xExitKey, yExitKey);
 
 	// Clean up
 	delete[] myWalls;
@@ -593,6 +636,16 @@ void MazeMaker::randomRoom(uint8_t& x, uint8_t& y) {
 	y = random(ROOMS_Y);
 }
 
+void MazeMaker::randomRoomInRegion(uint8_t& x, uint8_t& y, uint8_t** mazeRegions, uint8_t region) {
+	// Pick a random room
+	randomRoom(x, y);
+
+	// Re-roll until we find a room in the desired region
+	for (uint8_t retry = 0; retry < ROOMS && mazeRegions[x][y] != region; retry++) {
+		nextRoom(x, y);
+	}
+}
+
 // Advances the selected room sequentially.
 // Repeated calls to this function will pass through every room
 // in the maze once before returning to the starting room.
@@ -641,37 +694,6 @@ void MazeMaker::printMazeWallsAndRegions(uint8_t** rooms, uint8_t** mazeRegions)
 
 		Serial.print('\t');
 		Serial.println(y);
-	}
-	Serial.println();
-}
-
-void MazeMaker::printMaze(const Maze* maze) {
-	for (int y = MAZE_H - 1; y >= 0; y--) {
-		for (int x = MAZE_W - 1; x >= 0; x--) {
-			if (maze->isWall(x, y)) {
-				// Wall
-				Serial.print("[]");
-			} else if (maze->items->isPlayer(x, y)) {
-				// Player
-				Serial.print("P1");
-			} else {
-				// Space
-				Serial.print(". ");
-			}
-		}
-
-		Serial.print(" ");
-		Serial.println(y);
-	}
-	Serial.println();
-
-	// Print the maze data as a hex array
-	for (int y = MAZE_H - 1; y >= 0; y--) {
-		Serial.print("walls[");
-		Serial.print(y);
-		Serial.print("] = 0x");
-		Serial.print(maze->getRow(y), HEX);
-		Serial.println(";");
 	}
 	Serial.println();
 }

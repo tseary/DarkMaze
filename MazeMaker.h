@@ -58,13 +58,15 @@ private:
 	uint8_t countRegions(const uint8_t* mazeRegionSizes) const;
 
 	// Room-Level Helpers
-	static inline uint8_t getHWallHeight(uint8_t** rooms, const uint8_t x, const uint8_t y);
-	static inline uint8_t getVWallWidth(uint8_t** rooms, const uint8_t x, const uint8_t y);
-	static inline bool isConnectedSouth(uint8_t** rooms, const uint8_t x, const uint8_t y);
-	static inline bool isConnectedEast(uint8_t** rooms, const uint8_t x, const uint8_t y);
+	static uint8_t getHWallHeight(uint8_t** rooms, const uint8_t x, const uint8_t y);
+	static uint8_t getVWallWidth(uint8_t** rooms, const uint8_t x, const uint8_t y);
+	static bool isConnectedSouth(uint8_t** rooms, const uint8_t x, const uint8_t y);
+	static bool isConnectedEast(uint8_t** rooms, const uint8_t x, const uint8_t y);
 
-	// Helper for choosing a random room
+	// Helpers for choosing a random room
 	void randomRoom(uint8_t& x, uint8_t& y);
+	// Chooses a random room in the given region. This is guaranteed to succeed unless the region doesn't exist.
+	void randomRoomInRegion(uint8_t& x, uint8_t& y, uint8_t** mazeRegions, uint8_t region);
 
 	// Advances the selected room sequentially.
 	// Repeated calls to this function will pass through every room
@@ -74,10 +76,15 @@ private:
 	void nextRoom(uint8_t& x, uint8_t& y);
 
 	// Valid for n < 32749.
-	static inline void nextPseudorandom(uint16_t& k, const uint16_t n);
+	static void nextPseudorandom(uint16_t& k, const uint16_t n);
+
+	// DEBUG Converts the x,y coordinates of a room to coordinates of the center of the room in paces.
+	void roomToPaces(uint8_t& x, uint8_t& y) {
+		x = x * ROOM_W + ROOM_W / 2 + MAZE_BORDER;
+		y = y * ROOM_H + ROOM_H / 2 + MAZE_BORDER;
+	}
 
 	// Debug Printing
 	void printMazeWallsAndRegions(uint8_t** mazeWalls, uint8_t** mazeRegions);
-	void printMaze(const Maze* maze);
 	void printRegionSizes(uint8_t* mazeRegionSizes);
 };

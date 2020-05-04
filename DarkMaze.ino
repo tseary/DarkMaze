@@ -154,7 +154,7 @@ void loop() {
 		}
 
 		// DEBUG
-		printMaze();
+		maze->printMaze();
 	}
 
 	//
@@ -242,29 +242,4 @@ void queueHapticEffect(uint8_t effect, uint8_t slot) {
 void playHapticEffects(uint8_t queueLength) {
 	haptic->setWaveform(queueLength, 0);   // end waveform
 	haptic->go();
-}
-
-void printMaze() {
-	for (int y = maze->getHeight() - 1; y >= 0; y--) {
-
-		Serial.print("y=\t");
-		Serial.print(y);
-		Serial.print("\t");
-
-		for (int x = maze->getWidth() - 1; x >= 0; x--) {
-			if (maze->isWall(x, y)) {
-				// Wall
-				Serial.print("[]");
-			} else if (maze->items->isPlayer(x, y)) {
-				// Player
-				Serial.print("P1");
-			} else {
-				// Space
-				Serial.print(".'");
-			}
-		}
-
-		Serial.println();
-	}
-	Serial.println();
 }
