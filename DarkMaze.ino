@@ -51,7 +51,9 @@ bool switchClick = false;
 
 // Maze data
 Maze* maze = NULL;
+bool haveMidKey, haveExitKey;
 
+// Cardinal directions
 const uint8_t N = 1, S = 2, E = 3, W = 4;
 
 void setup() {
@@ -83,18 +85,16 @@ void setup() {
 	Serial.print("Random seed: ");
 	Serial.println(seed);
 
-	// Create a new maze
-	MazeMaker* maker = MazeMaker::getInstance();
-	uint8_t roomsX = random(3) + 3,	// 3-5
-		roomsY = random(2) + 3,		// 3-4
-		roomW = random(4) + 3,		// 3-6
-		roomH = random(5) + 3;		// 3-7
-	maker->setMazeDimensions(roomsX, roomsY, roomW, roomH);
-	maker->createMaze(maze);
+	// Some special cases:
+	// Random seed: 496320634	one big room with no walls
+	// Random seed: 600496700	FIXED: three regions
+	// Random seed: 534960517	BROKEN: Player starts in a one-room region
+
+	// Make a new maze
+	newGame();
 }
 
 void loop() {
-
 	// Check for trackball movement
 	uint8_t move = 0;
 	if (trackball->isInterrupt()) {
@@ -124,9 +124,11 @@ void loop() {
 	if (move) {
 		trackball->resetOrigin();
 
+		// Get the player's current location
 		uint8_t xPlayerDest, yPlayerDest;
 		maze->items->getPlayer(xPlayerDest, yPlayerDest);
 
+		// Get attempted move destination
 		if (move == N) {
 			yPlayerDest++;
 		} else if (move == S) {
@@ -137,7 +139,27 @@ void loop() {
 			xPlayerDest++;
 		}
 
-		if (!maze->isWall(xPlayerDest, yPlayerDest)) {
+		// Attempt to move
+		if (maze->isWall(xPlayerDest, yPlayerDest)) {
+			// Hit a wall
+			bump = true;
+		} else if (/*is door*/false) {
+			if (/*have the key*/false) {
+				// Unlock the door
+				// TODO request unlock effect
+				maze->items->setPlayer(xPlayerDest, yPlayerDest);
+			} else {
+				// Hit a door
+				// TODO request knocking effect
+			}
+		} else {
+			if (/*is key*/false) {
+				// Pick up the key
+				// TODO remove the key
+				// TODO request jingle effect
+			}
+
+			// Open space
 			maze->items->setPlayer(xPlayerDest, yPlayerDest);
 
 			// Count the number of 4-neighbour walls.
@@ -149,8 +171,11 @@ void loop() {
 			if (maze->isWall(xPlayerDest, yPlayerDest - 1)) footstep++;
 
 			footstep = min(footstep, NUM_FOOTSTEPS - 1);
-		} else {
-			bump = true;
+
+			// TODO Determine if a key is nearby (or on a line of sight)
+			if (/*key is nearby*/false) {
+				// TODO request a twinkling effect
+			}
 		}
 
 		// DEBUG
@@ -174,7 +199,7 @@ void loop() {
 
 	// User click
 	if (switchClick) {
-		queueHapticEffect(EFFECT_BUMP, slot++);
+		queueHapticEffect(EFFECT_LOCKED_DOOR, slot++);
 	}
 
 	//
@@ -203,6 +228,21 @@ void loop() {
 	}
 
 	delay(50);
+}
+
+void newGame() {
+	// Create a new maze
+	MazeMaker* maker = MazeMaker::getInstance();
+	uint8_t roomsX = random(3) + 3,	// 3-5
+		roomsY = random(2) + 3,		// 3-4
+		roomW = random(4) + 3,		// 3-6
+		roomH = random(5) + 3;		// 3-7
+	maker->setMazeDimensions(roomsX, roomsY, roomW, roomH);
+	maker->createMaze(maze);
+
+	// Clear the keys
+	haveMidKey = false;
+	haveExitKey = false;
 }
 
 void initializeTrackBall() {

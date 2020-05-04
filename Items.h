@@ -19,21 +19,21 @@ public:
 		ITEM_EXIT_DOOR = 99,
 		ITEM_EXIT_KEY = 79;*/
 
-	bool isPlayer(uint8_t x, uint8_t y);
-	void getPlayer(uint8_t& x, uint8_t& y);
+	bool isPlayer(uint8_t x, uint8_t y) const;
+	void getPlayer(uint8_t& x, uint8_t& y) const;
 	void setPlayer(uint8_t x, uint8_t y);
 
-	bool isMidKey(uint8_t x, uint8_t y);
-	void getMidKey(uint8_t& x, uint8_t& y);
+	bool isMidKey(uint8_t x, uint8_t y) const;
+	void getMidKey(uint8_t& x, uint8_t& y) const;
 	void setMidKey(uint8_t x, uint8_t y);
 
-	bool isMidDoor(uint8_t x, uint8_t y);
+	bool isMidDoor(uint8_t x, uint8_t y) const;
 
-	bool isExitKey(uint8_t x, uint8_t y);
-	void getExitKey(uint8_t& x, uint8_t& y);
+	bool isExitKey(uint8_t x, uint8_t y) const;
+	void getExitKey(uint8_t& x, uint8_t& y) const;
 	void setExitKey(uint8_t x, uint8_t y);
 
-	bool isExitDoor(uint8_t x, uint8_t y);
+	bool isExitDoor(uint8_t x, uint8_t y) const;
 
 private:
 	uint8_t _xPlayer, _yPlayer;

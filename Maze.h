@@ -50,7 +50,45 @@ public:
 	uint8_t getWidth() const;
 	uint8_t getHeight() const;
 
-	void printMaze();
+	void printMaze() const {
+		for (int y = _mazeHeight - 1; y >= 0; y--) {
+
+			Serial.print("y=\t");
+			Serial.print(y);
+			Serial.print("\t");
+
+			for (int x = _mazeWidth - 1; x >= 0; x--) {
+				if (isWall(x, y)) {
+					// Wall
+					Serial.print("[]");
+				} else if (items->isPlayer(x, y)) {
+					// Player
+					Serial.print("P1");
+				} else if (items->isMidKey(x, y)) {
+					// Middle key
+					Serial.print("MK");
+				} else if (items->isExitKey(x, y)) {
+					// Exit key
+					Serial.print("EK");
+				} else {
+					// Space
+					Serial.print(". ");
+				}
+			}
+			Serial.println();
+		}
+		Serial.println();
+
+		// Print the maze data as a hex array
+		/*for (int y = _mazeHeight - 1; y >= 0; y--) {
+			Serial.print("walls[");
+			Serial.print(y);
+			Serial.print("] = 0x");
+			Serial.print(maze->getRow(y), HEX);
+			Serial.println(";");
+		}
+		Serial.println();*/
+	}
 
 private:
 	// Walls (rendered at the pace level)

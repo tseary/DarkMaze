@@ -170,7 +170,8 @@ void MazeMaker::createMaze(Maze*& maze) {
 	while (regionCount > FINAL_REGION_COUNT && debugNoChangeCounter < 30) {
 		// Choose random door location
 		// DOORS is the number of possible locations for doors, i.e. the number of walls between two rooms.
-		const uint16_t DOORS = ROOMS_X * (ROOMS_Y - 1) + (ROOMS_X - 1) * ROOMS_Y;
+		const uint16_t DOORS_S = ROOMS_X * (ROOMS_Y - 1),
+			DOORS = DOORS_S + (ROOMS_X - 1) * ROOMS_Y;
 		uint16_t doorIndex = random(DOORS);
 		bool south;	// true = door to south, false = door to east
 		uint8_t xDoor, yDoor;
@@ -181,14 +182,15 @@ void MazeMaker::createMaze(Maze*& maze) {
 		// Keep re-rolling until we get a good location for the door
 		for (uint8_t retry = 0; retry < DOORS; retry++) {
 			// Convert door index to door location
-			south = doorIndex & 0x01;
-			doorIndex >>= 1;
+			// Lower values of doorIndex are to the south, higher values are to the east
+			south = doorIndex < DOORS_S;
 			if (south) {
 				xDoor = doorIndex % ROOMS_X;
 				yDoor = doorIndex / ROOMS_X + 1;
 			} else {
-				xDoor = doorIndex % (ROOMS_X - 1) + 1;
-				yDoor = doorIndex / (ROOMS_X - 1);
+				uint16_t doorIndexEast = doorIndex - DOORS_S;
+				xDoor = doorIndexEast % (ROOMS_X - 1) + 1;
+				yDoor = doorIndexEast / (ROOMS_X - 1);
 			}
 
 			// Break the loop if the door location is good
@@ -388,7 +390,19 @@ void MazeMaker::createMaze(Maze*& maze) {
 	// In TOPO_NESTED, startRegion1 is not touching the outside wall.
 
 	Serial.print("Topology: ");
-	Serial.println(topology);
+	switch (topology) {
+	case TOPO_SINGLE:
+		Serial.println("SINGLE");
+		break;
+
+	case TOPO_DOUBLE:
+		Serial.println("DOUBLE");
+		break;
+
+	case TOPO_NESTED:
+		Serial.println("NESTED");
+		break;
+	}
 
 	// Choose the regions for each item depending on the sequence
 	uint8_t itemRegionPlayer,
@@ -421,6 +435,7 @@ void MazeMaker::createMaze(Maze*& maze) {
 		Serial.println("CLOSET");
 		break;
 	}
+	Serial.println();
 
 	itemRegionMidKey = itemRegionPlayer;
 
