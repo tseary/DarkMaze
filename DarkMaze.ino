@@ -20,6 +20,8 @@
 // Haptic setup
 Adafruit_DRV2605* haptic = NULL;
 
+const uint8_t NONE = 255;
+
 // [0] - middle of room
 // [1] - near 1 wall
 // [2] - near 2 walls
@@ -28,13 +30,23 @@ uint8_t EFFECT_FOOTSTEPS[] = {74, 8, 7};		// best yet
 //uint8_t EFFECT_FOOTSTEPS[] = {72, 74, 33};	// echoey
 const uint8_t NUM_FOOTSTEPS = sizeof(EFFECT_FOOTSTEPS);
 
+// [0] = closest
+uint8_t EFFECT_HOMING[] = {64, 65, 67, 68, 69};
+const uint8_t NUM_HOMINGS = sizeof(EFFECT_HOMING);
+
+uint8_t homingDistance;
+uint32_t homingStartTime;
+
 uint8_t
 EFFECT_BUMP = 12;	// DEBUG make const
 const uint8_t
 EFFECT_START = 82,
 EFFECT_CLOCK = 25,
+EFFECT_KEY_NEARBY = 0,
+EFFECT_FIND_KEY1 = 89,	// Both find key effects are played in sequence (ramp up and double click)
+EFFECT_FIND_KEY2 = 34,
 EFFECT_LOCKED_DOOR = 52,
-EFFECT_DOOR_OPEN = 56;
+EFFECT_UNLOCK_DOOR = 56;
 
 // DEBUG
 uint8_t newEffect = 0;
@@ -45,12 +57,13 @@ TrackBall* trackball = NULL;
 
 // Trackball input
 const uint8_t TICKS_PER_STEP = 5;
-
 bool switchWasPressed = false;
 bool switchClick = false;
 
 // Maze data
 Maze* maze = NULL;
+
+// Game state
 bool haveMidKey, haveExitKey;
 
 // Cardinal directions
@@ -73,21 +86,19 @@ void setup() {
 	// Initialize the RNG by clicking the trackball
 	do {
 		trackball->read();
-		if (trackball->getSwitchState()) break;
-	} while (true);
+	} while (!trackball->getSwitchState());
 	uint32_t seed = micros() << 8;
 	do {
 		trackball->read();
-		if (!trackball->getSwitchState()) break;
-	} while (true);
+	} while (trackball->getSwitchState());
 	seed ^= micros();
+	//seed = 496320634;	// DEBUG
 	randomSeed(seed);
 	Serial.print("Random seed: ");
 	Serial.println(seed);
 
 	// Some special cases:
 	// Random seed: 496320634	one big room with no walls
-	// Random seed: 600496700	FIXED: three regions
 	// Random seed: 534960517	BROKEN: Player starts in a one-room region
 
 	// Make a new maze
@@ -118,11 +129,15 @@ void loop() {
 	// Move the player
 	//
 
-	bool bump = false;
-	const uint8_t NONE = 255;
+	bool requestEffectBump = false,
+		requestEffectKnock = false,
+		requestEffectUnlock = false,
+		requestEffectJingle = false,
+		requestEffectTwinkle = false;
 	uint8_t footstep = NONE;
 	if (move) {
 		trackball->resetOrigin();
+		homingStartTime += 200;	// Delay the homing effect
 
 		// Get the player's current location
 		uint8_t xPlayerDest, yPlayerDest;
@@ -142,44 +157,81 @@ void loop() {
 		// Attempt to move
 		if (maze->isWall(xPlayerDest, yPlayerDest)) {
 			// Hit a wall
-			bump = true;
-		} else if (/*is door*/false) {
-			if (/*have the key*/false) {
+			requestEffectBump = true;
+			move = 0;	// Move failed
+		} else if (maze->items->isMidDoor(xPlayerDest, yPlayerDest)) {
+			if (haveMidKey) {
 				// Unlock the door
-				// TODO request unlock effect
+				requestEffectUnlock = true;
 				maze->items->setPlayer(xPlayerDest, yPlayerDest);
 			} else {
-				// Hit a door
-				// TODO request knocking effect
+				// Knock on the door
+				requestEffectKnock = true;
+				move = 0;	// Move failed
+			}
+		} else if (maze->items->isExitDoor(xPlayerDest, yPlayerDest)) {
+			if (haveExitKey) {
+				// Unlock the door
+				requestEffectUnlock = true;
+				maze->items->setPlayer(xPlayerDest, yPlayerDest);
+			} else {
+				// Knock on the door
+				requestEffectKnock = true;
+				move = 0;	// Move failed
 			}
 		} else {
-			if (/*is key*/false) {
-				// Pick up the key
-				// TODO remove the key
-				// TODO request jingle effect
+			if (maze->items->isMidKey(xPlayerDest, yPlayerDest)) {
+				// Pick up the middle door key
+				haveMidKey = true;
+				maze->items->clearMidKey();
+				requestEffectJingle = true;
+			} else if (maze->items->isExitKey(xPlayerDest, yPlayerDest)) {
+				// Pick up the exit door key
+				haveExitKey = true;
+				maze->items->clearExitKey();
+				requestEffectJingle = true;
 			}
 
 			// Open space
 			maze->items->setPlayer(xPlayerDest, yPlayerDest);
-
-			// Count the number of 4-neighbour walls.
-			// This number will be between 0 and 3
-			footstep = 0;
-			if (maze->isWall(xPlayerDest + 1, yPlayerDest)) footstep++;
-			if (maze->isWall(xPlayerDest - 1, yPlayerDest)) footstep++;
-			if (maze->isWall(xPlayerDest, yPlayerDest + 1)) footstep++;
-			if (maze->isWall(xPlayerDest, yPlayerDest - 1)) footstep++;
-
-			footstep = min(footstep, NUM_FOOTSTEPS - 1);
-
-			// TODO Determine if a key is nearby (or on a line of sight)
-			if (/*key is nearby*/false) {
-				// TODO request a twinkling effect
-			}
 		}
 
 		// DEBUG
 		maze->printMaze();
+	}
+
+	// Update stuff only if the attempted move succeeded
+	if (move) {
+		// Get the player's current location
+		uint8_t xPlayerDest, yPlayerDest;
+		maze->items->getPlayer(xPlayerDest, yPlayerDest);
+
+		// Count the number of 4-neighbour walls.
+		// This number will be between 0 and 3
+		footstep = 0;
+		if (maze->isWall(xPlayerDest + 1, yPlayerDest)) footstep++;
+		if (maze->isWall(xPlayerDest - 1, yPlayerDest)) footstep++;
+		if (maze->isWall(xPlayerDest, yPlayerDest + 1)) footstep++;
+		if (maze->isWall(xPlayerDest, yPlayerDest - 1)) footstep++;
+
+		footstep = min(footstep, NUM_FOOTSTEPS - 1);
+
+		// Determine if a key is nearby and update the homing signal
+		const int KEY_HOMING_DISTANCE_SQR = 49;
+		int distanceSqrToKey = maze->items->distanceSqrToNearestKey(xPlayerDest, yPlayerDest);
+		if (distanceSqrToKey <= KEY_HOMING_DISTANCE_SQR) {
+			// Reset the homing timer when homing begins
+			if (homingDistance == NONE) {
+				homingStartTime = millis();
+			}
+
+			homingDistance = (uint8_t)sqrt(distanceSqrToKey);
+			Serial.print("homing dist =\t");
+			Serial.println(homingDistance);
+		} else {
+			// We are not near anything, clear the homing
+			homingDistance = NONE;
+		}
 	}
 
 	//
@@ -192,9 +244,32 @@ void loop() {
 		queueHapticEffect(EFFECT_FOOTSTEPS[footstep], slot++);
 	}
 
+	// Homing
+	const uint32_t HOMING_MILLIS = 1500;
+	if (homingDistance != NONE && millis() >= (homingStartTime + homingPeriod())) {
+		queueHapticEffect(homingEffect(), slot++);
+		homingStartTime += HOMING_MILLIS;
+	}
+
 	// Hitting the wall
-	if (bump) {
+	if (requestEffectBump) {
 		queueHapticEffect(EFFECT_BUMP, slot++);
+	}
+
+	// Locked door
+	if (requestEffectKnock) {
+		queueHapticEffect(EFFECT_LOCKED_DOOR, slot++);
+	}
+
+	// Unlocking a door
+	if (requestEffectUnlock) {
+		queueHapticEffect(EFFECT_UNLOCK_DOOR, slot++);
+	}
+
+	// Picking up a key
+	if (requestEffectJingle) {
+		queueHapticEffect(EFFECT_FIND_KEY1, slot++);
+		queueHapticEffect(EFFECT_FIND_KEY2, slot++);
 	}
 
 	// User click
@@ -243,12 +318,16 @@ void newGame() {
 	// Clear the keys
 	haveMidKey = false;
 	haveExitKey = false;
+
+	// Clear homing
+	homingDistance = NONE;
+	homingStartTime = millis();
 }
 
 void initializeTrackBall() {
 	trackball = new TrackBall(TrackBall::I2C_ADDRESS, TRACKBALL_INT_PIN);
 	//trackball->setRGBW(0, 0, 0, 32);
-	trackball->setRGBW(8, 8, 8, 8);
+	trackball->setRGBW(16, 16, 0, 32);
 }
 
 void initializeHaptic() {
@@ -265,6 +344,7 @@ void initializeHaptic() {
 }
 
 void initializeDotstar() {
+	// Turn off the internal light (it is hidden inside the enclosure)
 	const uint8_t DATAPIN = 7, CLOCKPIN = 8;
 	Adafruit_DotStar* dot = new Adafruit_DotStar(1, DATAPIN, CLOCKPIN);
 	dot->begin();
@@ -282,4 +362,14 @@ void queueHapticEffect(uint8_t effect, uint8_t slot) {
 void playHapticEffects(uint8_t queueLength) {
 	haptic->setWaveform(queueLength, 0);   // end waveform
 	haptic->go();
+}
+
+// Homing helpers
+
+uint8_t homingEffect() {
+	return EFFECT_HOMING[min(homingDistance, NUM_HOMINGS) - 1];
+}
+
+uint32_t homingPeriod() {
+	return (homingDistance + 1) * 333;
 }

@@ -6,10 +6,14 @@ MazeMaker* MazeMaker::instance = NULL;
 void MazeMaker::setMazeDimensions(uint8_t roomsX, uint8_t roomsY, uint8_t roomWidth, uint8_t roomHeight) {
 	ROOMS_X = roomsX;
 	ROOMS_Y = roomsY;
-	ROOMS = roomsX * roomsY;
+	NUM_ROOMS = roomsX * roomsY;
 
 	ROOM_W = roomWidth;
 	ROOM_H = roomHeight;
+
+	// Constants for door index
+	NUM_DOORS_E = (ROOMS_X - 1) * ROOMS_Y;
+	NUM_DOORS = NUM_DOORS_E + ROOMS_X * (ROOMS_Y - 1);
 
 	MAZE_W = 2 * MAZE_BORDER + ROOMS_X * ROOM_W;
 	MAZE_H = 2 * MAZE_BORDER + ROOMS_Y * ROOM_H;
@@ -38,7 +42,7 @@ void MazeMaker::createMaze(Maze*& maze) {
 	uint8_t** mazeRegions = new uint8_t * [ROOMS_X];
 
 	// mazeRegionSizes contains the number of rooms in each region. It is indexed by [region number].
-	uint8_t* mazeRegionSizes = new uint8_t[ROOMS];
+	uint8_t* mazeRegionSizes = new uint8_t[NUM_ROOMS];
 
 	Serial.println("Creating room-level model.");
 
@@ -137,7 +141,7 @@ void MazeMaker::createMaze(Maze*& maze) {
 	// The region indexes are numbers in [0,K).
 	// This converts those to actual region numbers in [0,N).
 	uint8_t startRegion1, startRegion2;
-	for (uint8_t region = 0, regionIndex = 0; region < ROOMS; region++) {
+	for (uint8_t region = 0, regionIndex = 0; region < NUM_ROOMS; region++) {
 		// If the size of the region is zero, skip it
 		if (!mazeRegionSizes[region]) continue;
 
@@ -156,10 +160,10 @@ void MazeMaker::createMaze(Maze*& maze) {
 
 	// 2. Create doorways at random until there are only 2 regions
 	const uint8_t FINAL_REGION_COUNT = 2;
-	const uint8_t MAX_REGION_SIZE = ROOMS;
+	const uint8_t MAX_REGION_SIZE = NUM_ROOMS;
 
 	// DEBUG
-	if (FINAL_REGION_COUNT * MAX_REGION_SIZE < ROOMS) {
+	if (FINAL_REGION_COUNT * MAX_REGION_SIZE < NUM_ROOMS) {
 		Serial.println("Assertion error: disagreement between "
 			"FINAL_REGION_COUNT and MAX_REGION_SIZE.");
 		return;
@@ -168,49 +172,33 @@ void MazeMaker::createMaze(Maze*& maze) {
 	//uint8_t regionCount = countRegions(mazeRegionSizes);
 	uint8_t debugNoChangeCounter = 0;
 	while (regionCount > FINAL_REGION_COUNT && debugNoChangeCounter < 30) {
-		// Choose random door location
-		// DOORS is the number of possible locations for doors, i.e. the number of walls between two rooms.
-		const uint16_t DOORS_S = ROOMS_X * (ROOMS_Y - 1),
-			DOORS = DOORS_S + (ROOMS_X - 1) * ROOMS_Y;
-		uint16_t doorIndex = random(DOORS);
-		bool south;	// true = door to south, false = door to east
+		// Choose random door location that touches exactly one of the starting regions
 		uint8_t xDoor, yDoor;
+		bool east;	// true = door to east, false = door to south
 
-		// The regions on either side of the new door
+		// Start with a random door
+		randomDoor(xDoor, yDoor, east);
+
+		// Re-roll until we find a door touching exactly one starting region
 		uint8_t region1, region2;
-
-		// Keep re-rolling until we get a good location for the door
-		for (uint8_t retry = 0; retry < DOORS; retry++) {
-			// Convert door index to door location
-			// Lower values of doorIndex are to the south, higher values are to the east
-			south = doorIndex < DOORS_S;
-			if (south) {
-				xDoor = doorIndex % ROOMS_X;
-				yDoor = doorIndex / ROOMS_X + 1;
-			} else {
-				uint16_t doorIndexEast = doorIndex - DOORS_S;
-				xDoor = doorIndexEast % (ROOMS_X - 1) + 1;
-				yDoor = doorIndexEast / (ROOMS_X - 1);
-			}
-
-			// Break the loop if the door location is good
-
-			// Get the regions on either side of the door
+		for (uint16_t retry = 0; retry < NUM_DOORS; retry++) {
+			// Check the success criteria
 			region1 = mazeRegions[xDoor][yDoor];
-			region2 = south ? mazeRegions[xDoor][yDoor - 1] : mazeRegions[xDoor - 1][yDoor];
+			region2 = east ? mazeRegions[xDoor - 1][yDoor] : mazeRegions[xDoor][yDoor - 1];
 
-			// The door location is good if it connects to exactly one of the starting regions
-			bool good = ((region1 == startRegion1) ^ (region2 == startRegion2)) ||
-				((region1 == startRegion2) ^ (region2 == startRegion1));
+			// Check if we already have this door
+			bool alreadyHaveIt = mazeRooms[xDoor][yDoor] & (east ? E_MASK : S_MASK);
 
-			if (good) break;
+			// Break if a good door has been found
+			if (!alreadyHaveIt && ((region1 == startRegion1 || region2 == startRegion1) ^
+				(region1 == startRegion2 || region2 == startRegion2))) break;
 
-			// Get the next door in pseudorandom order
-			nextPseudorandom(doorIndex, DOORS);
+			// Re-roll if the door isn't good
+			nextDoor(xDoor, yDoor, east);
 		}
 
 		Serial.print("- creating door to ");
-		Serial.print(south ? "south" : "east ");
+		Serial.print(east ? "east " : "south");
 		Serial.print(" at ");
 		Serial.print(xDoor);
 		Serial.print(", ");
@@ -218,7 +206,7 @@ void MazeMaker::createMaze(Maze*& maze) {
 		Serial.println(yDoor);
 
 		// Create the door
-		mazeRooms[xDoor][yDoor] |= south ? S_MASK : E_MASK;
+		mazeRooms[xDoor][yDoor] |= east ? E_MASK : S_MASK;
 
 		// Swap the regions so that we keep the starting region
 		if (region2 != startRegion1 && region2 != startRegion2) {
@@ -378,7 +366,7 @@ void MazeMaker::createMaze(Maze*& maze) {
 			touchingOutside2 = swapTouching;
 		}
 
-		// Determine if it is TOPO_LINEAR or TOPO_ENCLOSED
+		// Determine if it is TOPO_DOUBLE or TOPO_NESTED
 		topology = touchingOutside1 ? TOPO_DOUBLE : TOPO_NESTED;
 
 		// Select a sequence randomly
@@ -457,10 +445,37 @@ void MazeMaker::createMaze(Maze*& maze) {
 
 	const uint8_t DIR_N = 0, DIR_E = 1, DIR_S = 2, DIR_W = 3;
 
-	// TODO Choose door locations
-	uint8_t xMidDoor, yMidDoor, dirMidDoor;
-	uint8_t xExitDoor, yExitDoor, dirExitDoor;
+	// Choose door locations
+	uint8_t xMidDoor, yMidDoor;
+	bool dirMidDoorEast;	// If true, the middle door is between rooms to the east/west of each other.
+	uint8_t xExitDoor, yExitDoor;
+	uint8_t dirExitDoor;
 
+	// Choose middle door location, if applicable. Must be between regions.
+	if (topology != TOPO_SINGLE) {
+		randomDoorBetweenDifferentRegions(xMidDoor, yMidDoor, dirMidDoorEast, mazeRegions);
+
+		Serial.print("Location of middle door:\tx = ");
+		Serial.print(xMidDoor);
+		Serial.print("\ty = ");
+		Serial.print(yMidDoor);
+		Serial.print("\tdir = ");
+		Serial.println(dirMidDoorEast ? "east" : "south");
+	} else {
+		// The single topology has no middle door
+		xMidDoor = -1;
+		yMidDoor = -1;
+	}
+
+	// Choose exit door location. Must be in startRegion2 and on outside wall.
+	do {
+		// TODO This implementation has re-rolling
+		randomRoomInRegion(xExitDoor, yExitDoor, mazeRegions, startRegion2);
+	} while (!isRoomOnOutsideWall(xExitDoor, yExitDoor));
+	Serial.print("Location of exit door:\tx = ");
+	Serial.print(xExitDoor);
+	Serial.print("\ty = ");
+	Serial.println(yExitDoor);
 
 	//
 	// Render at the pace level
@@ -556,7 +571,6 @@ void MazeMaker::createMaze(Maze*& maze) {
 	}
 
 	// Re-create maze object and load in myWalls
-	// TODO Allow writing an entire row to maze->_walls
 	if (maze != NULL) {
 		delete maze;
 	}
@@ -616,7 +630,7 @@ bool MazeMaker::replaceRegion(uint8_t** mazeRegions, uint8_t* mazeRegionSizes,
 
 uint8_t MazeMaker::countRegions(const uint8_t* mazeRegionSizes) const {
 	uint8_t numRegions = 0;
-	for (uint8_t region = 0; region < ROOMS; region++) {
+	for (uint8_t region = 0; region < NUM_ROOMS; region++) {
 		if (mazeRegionSizes[region]) numRegions++;
 	}
 	return numRegions;
@@ -642,21 +656,72 @@ inline bool MazeMaker::isConnectedEast(uint8_t** rooms, const uint8_t x, const u
 	return x >= 1 && rooms[x][y] & E_MASK;
 }
 
+inline bool MazeMaker::isRoomOnOutsideWall(const uint8_t x, const uint8_t y) const {
+	return x == 0 || x == (MAZE_W - 1) || y == 0 || y == (MAZE_H - 1);
+}
+
+//
+// Helpers for choosing a random door
+//
+
+void MazeMaker::randomDoorBetweenDifferentRegions(uint8_t& x, uint8_t& y, bool& east, uint8_t** mazeRegions) const {
+	// Start with a random door
+	randomDoor(x, y, east);
+
+	// Re-roll until we find a door between different regions
+	bool good = false;
+	for (uint16_t retry = 0; retry < NUM_DOORS && !good; retry++) {
+		nextDoor(x, y, east);
+
+		// Check the success condition
+		uint8_t myRegion1 = mazeRegions[x][y],
+			myRegion2 = east ? mazeRegions[x - 1][y] : mazeRegions[x][y - 1];
+		good = myRegion1 != myRegion2;
+	}
+}
+
+inline void MazeMaker::randomDoor(uint8_t& x, uint8_t& y, bool& east) const {
+	indexToDoor(x, y, east, random(NUM_DOORS));
+}
+
+void MazeMaker::nextDoor(uint8_t& x, uint8_t& y, bool& east) const {
+	uint16_t index = doorToIndex(x, y, east);
+	nextPseudorandom(index, NUM_DOORS);
+	indexToDoor(x, y, east, index);
+}
+
+inline uint16_t MazeMaker::doorToIndex(const uint8_t x, const uint8_t y, const bool east) const {
+	return east ? (x - 1) + y * (ROOMS_X - 1) : NUM_DOORS_E + x + (y - 1) * ROOMS_X;
+}
+
+inline void MazeMaker::indexToDoor(uint8_t& x, uint8_t& y, bool& east, uint16_t index) const {
+	if (east = (index < NUM_DOORS_E)) {
+		// Door to east
+		x = index % (ROOMS_X - 1) + 1;
+		y = index / (ROOMS_X - 1);
+	} else {
+		// Door to south
+		index -= NUM_DOORS_E;
+		x = index % ROOMS_X;
+		y = index / ROOMS_X + 1;
+	}
+}
+
 //
 // Helpers for choosing a random room
 //
 
-void MazeMaker::randomRoom(uint8_t& x, uint8_t& y) {
+void MazeMaker::randomRoom(uint8_t& x, uint8_t& y) const {
 	x = random(ROOMS_X);
 	y = random(ROOMS_Y);
 }
 
-void MazeMaker::randomRoomInRegion(uint8_t& x, uint8_t& y, uint8_t** mazeRegions, uint8_t region) {
+void MazeMaker::randomRoomInRegion(uint8_t& x, uint8_t& y, uint8_t** mazeRegions, uint8_t region) const {
 	// Pick a random room
 	randomRoom(x, y);
 
 	// Re-roll until we find a room in the desired region
-	for (uint8_t retry = 0; retry < ROOMS && mazeRegions[x][y] != region; retry++) {
+	for (uint8_t retry = 0; retry < NUM_ROOMS && mazeRegions[x][y] != region; retry++) {
 		nextRoom(x, y);
 	}
 }
@@ -666,9 +731,9 @@ void MazeMaker::randomRoomInRegion(uint8_t& x, uint8_t& y, uint8_t** mazeRegions
 // in the maze once before returning to the starting room.
 // The implementation is such that the new room will typically
 // not be adjacent to the old room, but this is not guaranteed.
-void MazeMaker::nextRoom(uint8_t& x, uint8_t& y) {
+void MazeMaker::nextRoom(uint8_t& x, uint8_t& y) const {
 	uint16_t roomIndex = x + y * ROOMS_X;
-	nextPseudorandom(roomIndex, ROOMS);
+	nextPseudorandom(roomIndex, NUM_ROOMS);
 
 	x = roomIndex % ROOMS_X;
 	y = roomIndex / ROOMS_X;
@@ -715,7 +780,7 @@ void MazeMaker::printMazeWallsAndRegions(uint8_t** rooms, uint8_t** mazeRegions)
 
 void MazeMaker::printRegionSizes(uint8_t* mazeRegionSizes) {
 	Serial.println("region\tsize");
-	for (uint8_t region = 0; region < ROOMS; region++) {
+	for (uint8_t region = 0; region < NUM_ROOMS; region++) {
 		Serial.print(region);
 		Serial.print(" ... \t");
 		Serial.println(mazeRegionSizes[region]);

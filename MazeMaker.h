@@ -28,9 +28,13 @@ private:
 
 	// The number of rooms in the maze
 	uint8_t ROOMS_X, ROOMS_Y;
-	uint8_t ROOMS;
+	uint8_t NUM_ROOMS;
 	// The size of a room in paces
 	uint8_t ROOM_W, ROOM_H;
+	
+	// Constants for door index
+	uint16_t NUM_DOORS_E,	// The number of east/east doors
+		NUM_DOORS;			// The total number of interior doors
 
 	uint8_t MAZE_W, MAZE_H;
 
@@ -63,17 +67,33 @@ private:
 	static bool isConnectedSouth(uint8_t** rooms, const uint8_t x, const uint8_t y);
 	static bool isConnectedEast(uint8_t** rooms, const uint8_t x, const uint8_t y);
 
+	bool isRoomOnOutsideWall(const uint8_t x, const uint8_t y) const;
+
+	// Helpers for choosing a random door
+	void randomDoor(uint8_t& x, uint8_t& y, bool& east) const;
+	// Chooses a random room that connects two different regions. This is guaranteed to succeed unless there is only one region.
+	void randomDoorBetweenDifferentRegions(uint8_t& x, uint8_t& y, bool& east, uint8_t** mazeRegions) const;
+	// Chooses a random room that connects to exactly one of the given regions.
+	void randomDoorInOneOfTwoRegions(uint8_t& x, uint8_t& y, bool& east, uint8_t** mazeRegions, uint8_t region1, uint8_t region2) const;
+
+	// Advances the selected door sequentially.
+	// Repeated calls to this function will pass through every interior door
+	// in the maze once before returning to the starting door.
+	void nextDoor(uint8_t& x, uint8_t& y, bool& east) const;
+	uint16_t doorToIndex(const uint8_t x, const uint8_t y, const bool east) const;
+	void indexToDoor(uint8_t& x, uint8_t& y, bool& east, uint16_t index) const;
+
 	// Helpers for choosing a random room
-	void randomRoom(uint8_t& x, uint8_t& y);
+	void randomRoom(uint8_t& x, uint8_t& y) const;
 	// Chooses a random room in the given region. This is guaranteed to succeed unless the region doesn't exist.
-	void randomRoomInRegion(uint8_t& x, uint8_t& y, uint8_t** mazeRegions, uint8_t region);
+	void randomRoomInRegion(uint8_t& x, uint8_t& y, uint8_t** mazeRegions, uint8_t region) const;
 
 	// Advances the selected room sequentially.
 	// Repeated calls to this function will pass through every room
 	// in the maze once before returning to the starting room.
 	// The implementation is such that the new room will typically
 	// not be adjacent to the old room, but this is not guaranteed.
-	void nextRoom(uint8_t& x, uint8_t& y);
+	void nextRoom(uint8_t& x, uint8_t& y) const;
 
 	// Valid for n < 32749.
 	static void nextPseudorandom(uint16_t& k, const uint16_t n);
