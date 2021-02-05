@@ -461,17 +461,22 @@ void MazeMaker::createMaze(Maze*& maze) {
 		Serial.print(yMidDoor);
 		Serial.print("\tdir = ");
 		Serial.println(dirMidDoorEast ? "east" : "south");
+
+		// Indicate that the rooms are connected, but do not combine regions
+		mazeRooms[xMidDoor][yMidDoor] |= dirMidDoorEast ? E_MASK : S_MASK;
 	} else {
 		// The single topology has no middle door
 		xMidDoor = -1;
 		yMidDoor = -1;
+		dirMidDoorEast = false;
 	}
 
 	// Choose exit door location. Must be in startRegion2 and on outside wall.
-	do {
-		// TODO This implementation has re-rolling
-		randomRoomInRegion(xExitDoor, yExitDoor, mazeRegions, startRegion2);
-	} while (!isRoomOnOutsideWall(xExitDoor, yExitDoor));
+	randomRoomInRegion(xExitDoor, yExitDoor, mazeRegions, startRegion2);
+	while (!isRoomOnOutsideWall(xExitDoor, yExitDoor)) {
+		// TODO faulty implementation, does not guarantee room on outside wall
+		nextRoom(xExitDoor, yExitDoor);
+	}
 	Serial.print("Location of exit door:\tx = ");
 	Serial.print(xExitDoor);
 	Serial.print("\ty = ");
