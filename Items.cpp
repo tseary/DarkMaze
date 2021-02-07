@@ -32,6 +32,14 @@ void Items::clearMidKey() {
 bool Items::isMidDoor(uint8_t x, uint8_t y) const {
 	return x == _xMidDoor && y == _yMidDoor;
 }
+void Items::setMidDoor(uint8_t x, uint8_t y) {
+	_xMidDoor = x;
+	_yMidDoor = y;
+}
+void Items::clearMidDoor() {
+	_xMidDoor = NO_PLACE;
+	_yMidDoor = NO_PLACE;
+}
 
 bool Items::isExitKey(uint8_t x, uint8_t y) const {
 	return x == _xExitKey && y == _yExitKey;
@@ -52,6 +60,14 @@ void Items::clearExitKey() {
 bool Items::isExitDoor(uint8_t x, uint8_t y) const {
 	return x == _xExitDoor && y == _yExitDoor;
 }
+void Items::setExitDoor(uint8_t x, uint8_t y) {
+	_xExitDoor = x;
+	_yExitDoor = y;
+}
+void Items::clearExitDoor() {
+	_xExitDoor = NO_PLACE;
+	_yExitDoor = NO_PLACE;
+}
 
 int Items::distanceSqrToMidKey(uint8_t x, uint8_t y) const {
 	// Return a large number if the key is not anywhere
@@ -64,7 +80,7 @@ int Items::distanceSqrToMidKey(uint8_t x, uint8_t y) const {
 int Items::distanceSqrToExitKey(uint8_t x, uint8_t y) const {
 	// Return a large number if the key is not anywhere
 	if (_xExitKey == NO_PLACE || _yExitKey == NO_PLACE) return INT16_MAX;
-	
+
 	int xDist = x - _xExitKey,
 		yDist = y - _yExitKey;
 	return xDist * xDist + yDist * yDist;

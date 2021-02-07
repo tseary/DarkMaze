@@ -84,6 +84,7 @@ void setup() {
 	delay(500);
 
 	// Initialize the RNG by clicking the trackball
+	Serial.println("Click the trackball to begin.");
 	do {
 		trackball->read();
 	} while (!trackball->getSwitchState());
@@ -164,6 +165,7 @@ void loop() {
 				// Unlock the door
 				requestEffectUnlock = true;
 				maze->items->setPlayer(xPlayerDest, yPlayerDest);
+				maze->items->clearMidDoor();
 			} else {
 				// Knock on the door
 				requestEffectKnock = true;
@@ -310,8 +312,8 @@ void newGame() {
 	MazeMaker* maker = MazeMaker::getInstance();
 	uint8_t roomsX = random(3) + 3,	// 3-5
 		roomsY = random(2) + 3,		// 3-4
-		roomW = random(4) + 3,		// 3-6
-		roomH = random(5) + 3;		// 3-7
+		roomW = random(3) + 4,		// 4-6
+		roomH = random(4) + 4;		// 4-7
 	maker->setMazeDimensions(roomsX, roomsY, roomW, roomH);
 	maker->createMaze(maze);
 

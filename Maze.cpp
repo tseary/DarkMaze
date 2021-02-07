@@ -63,6 +63,12 @@ void Maze::printMaze() const {
 			} else if (items->isExitKey(x, y)) {
 				// Exit key
 				Serial.print("EK");
+			} else if (items->isMidDoor(x, y)) {
+				// Middle key
+				Serial.print("MD");
+			} else if (items->isExitDoor(x, y)) {
+				// Exit key
+				Serial.print("ED");
 			} else {
 				// Space
 				Serial.print(". ");

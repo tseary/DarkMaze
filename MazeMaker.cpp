@@ -54,9 +54,10 @@ void MazeMaker::createMaze(Maze*& maze) {
 		// After this, the contents of mazeWalls will be accurate but
 		// mazeRegions may contain regions that touch.
 		for (uint8_t y = 0; y < ROOMS_Y; y++) {
-			// Thickness of the vertical walls ||
+			// Wall thickness is such that the minimum room size is 2x2.
+			// Thickness of the east and west walls
 			uint8_t vertWallW = random(ROOM_W / 2) & 0b111;
-			// Thickness of the horizontal walls =
+			// Thickness of the north and south walls
 			uint8_t horzWallH = random(ROOM_H / 2) & 0b111;
 			mazeRooms[x][y] = (horzWallH << H_SHIFT) | vertWallW;
 
@@ -393,55 +394,58 @@ void MazeMaker::createMaze(Maze*& maze) {
 	}
 
 	// Choose the regions for each item depending on the sequence
-	uint8_t itemRegionPlayer,
-		itemRegionMidKey,
-		itemRegionExitKey;
+	// These are pointers to either startRegion1 or startRegion2, so changes made to
+	// those affect these.
+	uint8_t *itemRegionPtrPlayer,
+		*itemRegionPtrMidKey,
+		*itemRegionPtrExitKey;
 
 	Serial.print("Sequence: ");
 	switch (sequence) {
 	case SEQ_LINEAR:
-		itemRegionPlayer = startRegion1;
-		itemRegionExitKey = startRegion2;
+		itemRegionPtrPlayer = &startRegion1;
+		itemRegionPtrExitKey = &startRegion2;
 		Serial.println("LINEAR");
 		break;
 
 	case SEQ_PARALLEL:
-		itemRegionPlayer = startRegion1;
-		itemRegionExitKey = startRegion1;
+		itemRegionPtrPlayer = &startRegion1;
+		itemRegionPtrExitKey = &startRegion1;
 		Serial.println("PARALLEL");
 		break;
 
 	case SEQ_DIVERSION:
-		itemRegionPlayer = startRegion2;
-		itemRegionExitKey = startRegion2;
+		itemRegionPtrPlayer = &startRegion2;
+		itemRegionPtrExitKey = &startRegion2;
 		Serial.println("DIVERSION");
 		break;
 
 	case SEQ_CLOSET:
-		itemRegionPlayer = startRegion2;
-		itemRegionExitKey = startRegion1;
+		itemRegionPtrPlayer = &startRegion2;
+		itemRegionPtrExitKey = &startRegion1;
 		Serial.println("CLOSET");
 		break;
 	}
 	Serial.println();
 
-	itemRegionMidKey = itemRegionPlayer;
+	itemRegionPtrMidKey = itemRegionPtrPlayer;
 
 	// For TOPO_DOUBLE, if one region has only one room, swap appropriately
 	// so that the player does not start in the one-room region.
-	if (topology == TOPO_DOUBLE && mazeRegionSizes[itemRegionPlayer] == 1) {
+	if (topology == TOPO_DOUBLE && mazeRegionSizes[*itemRegionPtrPlayer] == 1) {
 		uint8_t swapRegion = startRegion1;
 		startRegion1 = startRegion2;
 		startRegion2 = swapRegion;
+		Serial.println("Swapped player out of 1-room region.");
 	}
 
 	// Choose rooms to put things in, in the appropriate regions
 	uint8_t xPlayer, yPlayer;
 	uint8_t xMidKey, yMidKey;
 	uint8_t xExitKey, yExitKey;
-	randomRoomInRegion(xPlayer, yPlayer, mazeRegions, itemRegionPlayer);
-	randomRoomInRegion(xMidKey, yMidKey, mazeRegions, itemRegionMidKey);
-	randomRoomInRegion(xExitKey, yExitKey, mazeRegions, itemRegionExitKey);
+	randomRoomInRegion(xPlayer, yPlayer, mazeRegions, *itemRegionPtrPlayer);
+	randomRoomInRegion(xMidKey, yMidKey, mazeRegions, *itemRegionPtrMidKey);
+	randomRoomInRegion(xExitKey, yExitKey, mazeRegions, *itemRegionPtrExitKey);
 
 	const uint8_t DIR_N = 0, DIR_E = 1, DIR_S = 2, DIR_W = 3;
 
@@ -585,12 +589,58 @@ void MazeMaker::createMaze(Maze*& maze) {
 	// DEBUG Place Player (convert room to paces)
 	roomToPaces(xPlayer, yPlayer);
 	maze->items->setPlayer(xPlayer, yPlayer);
+
+	// DEBUG Place keys
+	// TODO Place keys always in the corner of a room
 	roomToPaces(xMidKey, yMidKey);
 	maze->items->setMidKey(xMidKey, yMidKey);
 	roomToPaces(xExitKey, yExitKey);
 	maze->items->setExitKey(xExitKey, yExitKey);
 
+	// Place middle door on the surface of a wall facing the player.
+	uint8_t xMidDoorPaces = xMidDoor,
+		yMidDoorPaces = yMidDoor;
+	roomToPaces(xMidDoorPaces, yMidDoorPaces);
+	// Make the door flush with the wall of region that the player is in
+	if (dirMidDoorEast) {
+		// If eastWall is true, the door goes on the surface of the eastern wall
+		// in room [xMidDoor][yMidDoor].
+		// If eastWall is false, the door goes on the surface of the western wall
+		// in room [xMidDoor - 1][yMidDoor].
+		bool eastWall = mazeRegions[xMidDoor][yMidDoor] == *itemRegionPtrPlayer;
+
+		if (eastWall) {
+			// Get the wall thickness in the room
+			uint8_t wallThickness = getVWallWidth(mazeRooms, xMidDoor, yMidDoor);
+			xMidDoorPaces = xMidDoor * ROOM_W + (wallThickness - 1) + MAZE_BORDER;
+		} else {
+			// Get the wall thickness in the room
+			uint8_t wallThickness = getVWallWidth(mazeRooms, xMidDoor - 1, yMidDoor);
+			xMidDoorPaces = xMidDoor * ROOM_W - wallThickness + MAZE_BORDER;
+		}
+	} else {
+		// If southWall is true, the door goes on the surface of the southern wall
+		// in room [xMidDoor][yMidDoor].
+		// If southWall is false, the door goes on the surface of the northern wall
+		// in room [xMidDoor][yMidDoor - 1].
+		bool southWall = mazeRegions[xMidDoor][yMidDoor] == *itemRegionPtrPlayer;
+
+		if (southWall) {
+			// Get the wall thickness in the room
+			uint8_t wallThickness = getHWallHeight(mazeRooms, xMidDoor, yMidDoor);
+			yMidDoorPaces = yMidDoor * ROOM_H + (wallThickness - 1) + MAZE_BORDER;
+		} else {
+			// Get the wall thickness in the room
+			uint8_t wallThickness = getHWallHeight(mazeRooms, xMidDoor, yMidDoor - 1);
+			yMidDoorPaces = yMidDoor * ROOM_H - wallThickness + MAZE_BORDER;
+		}
+	}
+	maze->items->setMidDoor(xMidDoorPaces, yMidDoorPaces);
+
+	//
 	// Clean up
+	//
+
 	delete[] myWalls;
 	for (uint8_t xRoom = 0; xRoom < ROOMS_X; xRoom++) {
 		delete[] mazeRooms[xRoom];

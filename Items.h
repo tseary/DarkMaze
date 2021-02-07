@@ -12,12 +12,13 @@
 
 class Items {
 public:
-	/*static const uint8_t
-		ITEM_PLAYER = 1,
-		ITEM_MID_DOOR = 95,
-		ITEM_MID_KEY = 75,
-		ITEM_EXIT_DOOR = 99,
-		ITEM_EXIT_KEY = 79;*/
+	Items() {
+		// Initially clear everything
+		clearMidKey();
+		clearExitKey();
+		clearMidDoor();
+		clearExitDoor();
+	}
 
 	bool isPlayer(uint8_t x, uint8_t y) const;
 	void getPlayer(uint8_t& x, uint8_t& y) const;
@@ -29,6 +30,8 @@ public:
 	void clearMidKey();
 
 	bool isMidDoor(uint8_t x, uint8_t y) const;
+	void setMidDoor(uint8_t x, uint8_t y);
+	void clearMidDoor();
 
 	bool isExitKey(uint8_t x, uint8_t y) const;
 	void getExitKey(uint8_t& x, uint8_t& y) const;
@@ -36,6 +39,8 @@ public:
 	void clearExitKey();
 
 	bool isExitDoor(uint8_t x, uint8_t y) const;
+	void setExitDoor(uint8_t x, uint8_t y);
+	void clearExitDoor();
 
 	int distanceSqrToMidKey(uint8_t x, uint8_t y) const;
 	int distanceSqrToExitKey(uint8_t x, uint8_t y) const;

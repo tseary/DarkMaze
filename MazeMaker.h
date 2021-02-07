@@ -98,10 +98,21 @@ private:
 	// Valid for n < 32749.
 	static void nextPseudorandom(uint16_t& k, const uint16_t n);
 
+	// Pace-Level Helpers
+	void doorOnWall(uint8_t** rooms, const uint8_t x, const uint8_t y) {
+		// TODO
+	}
 	// DEBUG Converts the x,y coordinates of a room to coordinates of the center of the room in paces.
 	void roomToPaces(uint8_t& x, uint8_t& y) {
-		x = x * ROOM_W + ROOM_W / 2 + MAZE_BORDER;
-		y = y * ROOM_H + ROOM_H / 2 + MAZE_BORDER;
+		x = roomXToPaces(x);
+		y = roomYToPaces(y);
+	}
+	// Gets the coordinates of the lower right corner of a room in paces.
+	uint8_t roomXToPaces(const uint8_t x) {
+		return x * ROOM_W + ROOM_W / 2 + MAZE_BORDER;
+	}
+	uint8_t roomYToPaces(const uint8_t y) {
+		return y * ROOM_H + ROOM_H / 2 + MAZE_BORDER;
 	}
 
 	// Debug Printing
